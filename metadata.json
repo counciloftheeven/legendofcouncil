@@ -1,0 +1,6 @@
+{
+  "name": "Stallhart Masaüstü RPG",
+  "description": "Karanlık fantezi evreni Stallhart için Fate tabanlı kural motoru, karakter oluşturucu, savaş takibi, harita ve Anlatıcı (Aldris) arşivi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
