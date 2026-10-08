@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import {
   Karakter,
-  Hane,
-  HANELER,
-  MESLEKLER,
-  HAZIR_ESYALAR,
-  Esya,
-  Nitelikler,
-  Beceriler,
-  hesaplaMaksYaraKutusu,
-  hesaplaMaksYuk,
-  hesaplaBaslangicMuhur,
-  hesaplaToplamAgirlik,
+  TurAdi,
+  TUR_VE_IRKLAR,
+  SEKIZ_HANE,
+  ON_SEKIZ_MESLEK,
+  YAKLASIMLAR,
+  YaklasimAdi,
+  SIFATLAR_MERDIVENI,
+  merdivenDerecesiBul,
+  HAZIR_EKIPMANLAR
 } from '../rules';
 import { sound } from '../utils/audio';
+import { LegendOfTheCouncilLogo } from './LegendOfTheCouncilLogo';
 import {
   Shield,
   CheckCircle2,
@@ -25,8 +24,12 @@ import {
   AlertCircle,
   Skull,
   Feather,
-  Upload,
-  RefreshCw
+  RefreshCw,
+  Award,
+  Crown,
+  Scroll,
+  Heart,
+  Users
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -39,1096 +42,650 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   onKarakterOlustur,
   onIptal,
 }) => {
-  const [adim, setAdim] = useState<number>(1);
-  const [hataMesaji, setHataMesaji] = useState<string | null>(null);
+  const [adim, setAdim] = useState<number>(1); // 1..7
 
-  // Form State
-  const [ad, setAd] = useState('');
-  const [hane, setHane] = useState<Hane>('Stallhart');
-  const [koken, setKoken] = useState<'Halk' | 'Soylu' | 'Kutsal Kan İddiası'>('Halk');
-  const [meslek, setMeslek] = useState<string>('Paralı Asker');
-  const [rutbe, setRutbe] = useState('Acemi');
+  // Adım 1: Tür (6 Seçenek)
+  const [seciliTur, setSeciliTur] = useState<TurAdi>('İnsan');
 
-  // Üç Evre
-  const [ucEvre, setUcEvre] = useState({
-    koken: '',
-    yukselenCatisma: '',
-    konukYildiz: '',
+  // Adım 2: Irk (12 Seçenek)
+  const [seciliIrkKey, setSeciliIrkKey] = useState<string>('Eran');
+
+  // Adım 3: Köken (Soylu / Halktan)
+  const [seciliKoken, setSeciliKoken] = useState<'Soylu' | 'Halktan'>('Soylu');
+
+  // Adım 4: Hane veya Eyalet + Meslek
+  const [seciliHaneKey, setSeciliHaneKey] = useState<string>('Selya');
+  const [seciliEyalet, setSeciliEyalet] = useState<string>('Selyanya Vadisi');
+  const [seciliMeslekKey, setSeciliMeslekKey] = useState<string>('Asker');
+
+  // İsim & Portre
+  const [ad, setAd] = useState<string>('');
+  const [fotoUrl, setFotoUrl] = useState<string>(
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80'
+  );
+
+  // Adım 5: 14 Yaklaşım Değerleri Dağılımı (+4 x1, +3 x2, +2 x3, +1 x3, 0 x2, -1 x3)
+  const [yaklasimlar, setYaklasimlar] = useState<Record<YaklasimAdi, number>>({
+    'Ghardello': 4,
+    'Ver-ed': 3,
+    'Lithron': 3,
+    'Rax-ed': 2,
+    'Aldris': 2,
+    'Edor / Edros': 2,
+    'Vizer': 1,
+    'Xes-hart': 1,
+    'Aronlid': 1,
+    'Zel-vash': 0,
+    'Vize-rion': 0,
+    'Lodvez': -1,
+    'Erau': -1,
+    'Loth': -1,
   });
 
-  // Görünüşler (5 Aspects)
-  const [gorunumler, setGorunumler] = useState({
-    anaKavram: '',
-    dert: '',
-    gecmis: '',
-    catisma: '',
-    bag: '',
-  });
+  // Adım 6: Uzmanlıklar
+  const [uzmanlik1, setUzmanlik1] = useState<string>('Hane Mirası / Meslek Hüneri');
+  const [uzmanlik2, setUzmanlik2] = useState<string>('Sözleşme Kılıcı: Müttefik yanımdayken Ghardello +2');
+  const [uzmanlik3, setUzmanlik3] = useState<string>('Kalkan Duvarı: Siper hattında Savunma +2');
+  const [yasakIlim, setYasakIlim] = useState<boolean>(false);
 
-  // Puan Dağıtımı (20 Puan: 9 Nitelik + 8 Beceri + 3 Luck)
-  const [nitelikler, setNitelikler] = useState<Nitelikler>({
-    STR: 1,
-    DEX: 1,
-    CON: 1,
-    INT: 1,
-    WIS: 1,
-    CHA: 1,
-  });
+  // Adım 7: 5 Aspect ve 3 Geçmiş Cümlesi
+  const [unvanVeKader, setUnvanVeKader] = useState<string>('');
+  const [zayifKanadi, setZayifKanadi] = useState<string>('');
+  const [sadakatBagi, setSadakatBagi] = useState<string>('');
+  const [serbest1, setSerbest1] = useState<string>('');
+  const [serbest2, setSerbest2] = useState<string>('');
+  const [gecmis1, setGecmis1] = useState<string>('Sınır boylarında zorlu bir çocukluk geçirdim.');
+  const [gecmis2, setGecmis2] = useState<string>('Kanlı bir kuşatmada sancağı tek başıma savundum.');
+  const [gecmis3, setGecmis3] = useState<string>('Verilen gizli bir yeminle kaderim tahtın gölgesine bağlandı.');
 
-  const [beceriler, setBeceriler] = useState<Beceriler>({
-    Fight: 1,
-    Shoot: 1,
-    Stealth: 1,
-    Investigate: 1,
-    Lore: 1,
-    ProvokeManipulate: 1,
-  });
+  const guncelIrk = TUR_VE_IRKLAR[seciliIrkKey] || TUR_VE_IRKLAR.Eran;
+  const guncelHane = SEKIZ_HANE[seciliHaneKey] || SEKIZ_HANE.Selya;
+  const guncelMeslek = ON_SEKIZ_MESLEK[seciliMeslekKey] || ON_SEKIZ_MESLEK.Asker;
 
-  const [luck, setLuck] = useState<number>(3);
-
-  // Ekipman & Aron
-  const [aron, setAron] = useState<number>(20);
-  const [seciliEsyalar, setSeciliEsyalar] = useState<Esya[]>([
-    HAZIR_ESYALAR[0], // Başlangıç kılıcı
-    HAZIR_ESYALAR[7], // Sefer heybesi
-  ]);
-
-  // Fotoğraf ve filtre
-  const [fotoUrl, setFotoUrl] = useState<string>('');
-  const [sepyaFiltresi, setSepyaFiltresi] = useState<boolean>(true);
-  const [analizYukleniyor, setAnalizYukleniyor] = useState<boolean>(false);
-  const [geminiPortreAnalizi, setGeminiPortreAnalizi] = useState<string | null>(null);
-
-  const haneInfo = HANELER[hane];
-
-  // Puan Hesaplamaları
-  const harcananNitelik = Object.values(nitelikler).reduce((a, b) => a + b, 0);
-  const harcananBeceri = Object.values(beceriler).reduce((a, b) => a + b, 0);
-  const kalanNitelik = 9 - harcananNitelik;
-  const kalanBeceri = 8 - harcananBeceri;
-  const kalanLuck = 3 - luck;
-  const kalanToplamPuan = kalanNitelik + kalanBeceri + kalanLuck;
-
-  const maksYuk = hesaplaMaksYuk(nitelikler.STR);
-  const toplamYuk = hesaplaToplamAgirlik(seciliEsyalar);
-
-  // Adım Doğrulama Kontrolleri
-  const sonrakiAdimaGec = () => {
-    setHataMesaji(null);
-
-    if (adim === 1) {
-      if (!ad.trim()) {
-        setHataMesaji('Mühür henüz basılamaz: Karakterinizin şanlı veya gizemli bir ada ihtiyacı var.');
-        return;
-      }
-    }
-
-    if (adim === 4) {
-      // Üç evre kontrolü
-      if (!ucEvre.koken.trim() || !ucEvre.yukselenCatisma.trim()) {
-        setHataMesaji('Arşiv eksik: En azından Köken ve Yükselen Çatışma hikayeleri yazılmalıdır.');
-        return;
-      }
-    }
-
-    if (adim === 5) {
-      // Puan dağıtımı
-      if (kalanNitelik < 0 || kalanBeceri < 0 || luck < 0 || luck > 3) {
-        setHataMesaji('Puan haddi aşıldı! Nitelikler tavanı 9, Beceriler tavanı 8 puandır.');
-        return;
-      }
-    }
-
-    if (adim === 6) {
-      // Görünüşler: Ana Kavram ve Dert zorunlu
-      if (!gorunumler.anaKavram.trim() || !gorunumler.dert.trim()) {
-        setHataMesaji('Fate kuralı: Ana Kavram ve Dert (Trouble) alanları kader için mecburidir.');
-        return;
-      }
-    }
-
-    if (adim === 7) {
-      // Ekipman & Yük
-      if (toplamYuk > maksYuk) {
-        setHataMesaji(`Taşıma haddi aşıldı! Gücünüz en fazla ${maksYuk} Yük taşımanıza izin verir.`);
-        return;
-      }
-      if (aron < 0) {
-        setHataMesaji('Aron tükendi! Borç almadan daha fazla eşya alamazsınız.');
-        return;
-      }
-    }
-
+  // İleri Adım Kontrolleri
+  const sonrakiAdim = () => {
     sound.playSealStamp();
-    setAdim((prev) => Math.min(9, prev + 1));
+    if (adim === 4) {
+      // 4. adımdan 5'e geçerken ilk uzmanlığı ve zayıf kanadı otomatik hazırla
+      if (seciliKoken === 'Soylu') {
+        setUzmanlik1(`${guncelHane.haneMirasi}: ${guncelHane.haneMirasiDetay}`);
+      } else {
+        setUzmanlik1(`${guncelMeslek.meslekHüneri}: ${guncelMeslek.hunerMetni}`);
+        if (!zayifKanadi) setZayifKanadi(guncelMeslek.yuk);
+      }
+    }
+    setAdim((prev) => Math.min(7, prev + 1));
   };
 
-  const oncekiAdimaGit = () => {
-    setHataMesaji(null);
+  const oncekiAdim = () => {
     sound.playSealStamp();
     setAdim((prev) => Math.max(1, prev - 1));
   };
 
-  // Eşya Satın Al / Bırak
-  const handleEsyaSecToggle = (esya: Esya) => {
-    const varMi = seciliEsyalar.some((e) => e.id === esya.id);
-    if (varMi) {
-      setSeciliEsyalar(seciliEsyalar.filter((e) => e.id !== esya.id));
-      setAron((prev) => prev + esya.fiyat);
-    } else {
-      if (aron < esya.fiyat) {
-        setHataMesaji('Yeterli Aron yok!');
-        return;
-      }
-      setSeciliEsyalar([...seciliEsyalar, esya]);
-      setAron((prev) => prev - esya.fiyat);
-    }
+  // Yaklaşım Değeri Değiştirme
+  const handleYaklasimDegis = (yAd: YaklasimAdi, val: number) => {
+    setYaklasimlar((prev) => ({
+      ...prev,
+      [yAd]: val,
+    }));
   };
 
-  // Gemini Portre Analizi
-  const handlePortreAnalizi = async (base64Img: string) => {
-    try {
-      setAnalizYukleniyor(true);
-      const res = await fetch('/api/gemini/analyze-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: base64Img,
-          prompt: `Bu portreyi Stallhart masaüstü RPG evreninde analiz et. Karakterin hangi Haneye (${hane}), hangi mesleğe (${meslek}) benzediğini, yüzündeki olası yara izlerini ve taşıdığı karanlık sırrı 3 kısa cümleyle anlat.`,
-        }),
-      });
-      const data = await res.json();
-      if (data.analysis) {
-        setGeminiPortreAnalizi(data.analysis);
-      }
-    } catch {
-      // Fallback
-    } finally {
-      setAnalizYukleniyor(false);
-    }
-  };
-
-  const handleFotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setFotoUrl(result);
-        handlePortreAnalizi(result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Karakteri Tamamla
-  const handleMuhuBasVeTamamla = () => {
+  // Karakteri Kaydet
+  const handleTamamla = () => {
     sound.playSealStamp();
-    confetti({ particleCount: 70, spread: 80, origin: { y: 0.5 } });
+    confetti({ particleCount: 50, spread: 70 });
+
+    const olcek = seciliKoken === 'Soylu' ? 5 : 2;
+    const yenileme = seciliKoken === 'Soylu' ? 3 : 4;
 
     const yeniKarakter: Karakter = {
       id: `char_${Date.now()}`,
-      ad: ad.trim(),
-      hane,
-      koken,
-      meslek,
-      rutbe,
-      cerceve: `${hane.toLowerCase()}-frame`,
+      ad: ad.trim() || 'İsimsiz Savaşçı',
+      oyuncu: 'Oyuncu',
+      tur: seciliTur,
+      irk: guncelIrk.ad,
+      koken: seciliKoken,
+      olcek,
+      hane: seciliKoken === 'Soylu' ? (guncelHane.id as any) : 'Stallhart',
+      eyalet: seciliKoken === 'Soylu' ? guncelHane.diyar : seciliEyalet,
+      meslek: seciliKoken === 'Soylu' ? 'Soylu Asilzade' : guncelMeslek.ad,
+      rutbe: seciliKoken === 'Soylu' ? 'Hane Varisi' : 'Kıdemli',
       fotoUrl,
-      nitelikler,
-      beceriler,
-      luck,
-      gorunumler,
-      ucEvre,
-      sayaclar: {
-        yaraKutulari: hesaplaMaksYaraKutusu(nitelikler.CON),
-        alınanYaraKutulari: 0,
-        yorgunluk: 0,
-        muhur: hesaplaBaslangicMuhur(luck),
-        leke: 0,
-        supheli: 0,
+      cerceve: seciliKoken === 'Soylu' ? 'stallhart-gold' : 'arhan-crimson',
+
+      yenileme,
+      kaderPuani: yenileme,
+
+      yaklasimlar,
+
+      yaraHatlari: {
+        fiziksel: [false, false, false],
+        zihinsel: [false, false, false],
+        itibar: [false],
       },
-      ekonomi: {
-        aron,
-        borc: 0,
-        sicil: koken === 'Soylu' ? 0 : 1,
-        un: koken === 'Kutsal Kan İddiası' ? 3 : 1,
+      sonuclar: {},
+
+      aspectler: {
+        unvanVeKader: unvanVeKader.trim() || 'Stallhart’ın Kader Yolu Yolcusu',
+        zayifKanadi: zayifKanadi.trim() || (seciliKoken === 'Halktan' ? guncelMeslek.yuk : 'Onur Yükü'),
+        sadakatBagi: sadakatBagi.trim() || 'Birlik Kardeşime Verilmiş Söz',
+        serbest1: serbest1.trim() || 'Kör Yengeç’te Gizli Bir Masa',
+        serbest2: serbest2.trim() || 'Kadim Bir Çeliğin Hatırası',
       },
-      envanter: seciliEsyalar,
-      yaraIzleri: [],
-      yaralar: {},
-      durumlar: ['Sağlam'],
-      kilometreTaslari: {
-        kucuk: 0,
-        orta: 0,
-        buyuk: 0,
+
+      uzmanliklar: [uzmanlik1, uzmanlik2, uzmanlik3].filter(Boolean),
+      yasakIlim: seciliMeslekKey === 'Büyücü' || yasakIlim,
+
+      ekipmanAspectleri: [
+        'Ağır Plaka Zırh: Ghardello Savunmasında +2.',
+        'Stallhart Çeliği Kılıç: Saldırıda +2.'
+      ],
+      envanter: [
+        { id: `eq_${Date.now()}_1`, ad: 'Stallhart Çeliği Kılıç', tur: 'Silah', aspectEtkisi: 'Ghardello ile Saldırıda +2.', fiyat: 15, yuk: 2 },
+        { id: `eq_${Date.now()}_2`, ad: 'Deri Zırh', tur: 'Zırh', aspectEtkisi: 'Savunmada +1.', fiyat: 10, yuk: 2 }
+      ],
+
+      gecmis3Cumle: [gecmis1, gecmis2, gecmis3],
+
+      ekonomi: { aron: seciliKoken === 'Soylu' ? 40 : 20, borc: 0 },
+      durumlar: ['Hazır'],
+      notlar: '## 📜 Karakterin Yeminleri & Yolculuk Notları',
+
+      // Legacy alanlar
+      sayaclar: { yaraKutulari: 3, alınanYaraKutulari: 0, yorgunluk: 0, muhur: yenileme, leke: 0, supheli: 1 },
+      gorunumler: {
+        anaKavram: unvanVeKader.trim() || 'Kader Yolcusu',
+        dert: zayifKanadi.trim() || 'Yük',
+        gecmis: serbest1.trim() || 'Geçmiş Sırrı',
+        catisma: serbest2.trim() || 'Çatışma',
+        bag: sadakatBagi.trim() || 'Sadakat Bağı',
       },
-      notlar: `Köken: ${koken}, Sancak: ${haneInfo.ad}`,
+      beceriler: { Fight: 3, Shoot: 2, Stealth: 1, Investigate: 2, Lore: 2, ProvokeManipulate: 2 },
+      nitelikler: { STR: 2, DEX: 2, CON: 2, INT: 2, WIS: 2, CHA: 2 },
     };
 
     onKarakterOlustur(yeniKarakter);
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-3 sm:p-6">
-      {/* Wizard Progress Bar with Wax Seals */}
-      <div className="parchment-sheet rounded-xl border border-[#523d2b] p-4 mb-6 shadow-xl">
-        <div className="flex items-center justify-between overflow-x-auto no-scrollbar gap-2 py-2">
-          {[
-            { num: 1, label: 'Hane' },
-            { num: 2, label: 'Köken' },
-            { num: 3, label: 'Meslek' },
-            { num: 4, label: 'Üç Evre' },
-            { num: 5, label: 'Puanlar' },
-            { num: 6, label: 'Görünüş' },
-            { num: 7, label: 'Ekipman' },
-            { num: 8, label: 'Portre' },
-            { num: 9, label: 'Mühür' },
-          ].map((step) => {
-            const isDone = adim > step.num;
-            const isCurrent = adim === step.num;
-            return (
-              <div
-                key={step.num}
-                onClick={() => isDone && setAdim(step.num)}
-                className={`flex flex-col items-center flex-1 min-w-[50px] cursor-pointer transition-all ${
-                  isDone ? 'opacity-90' : isCurrent ? 'scale-105' : 'opacity-40'
-                }`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-heading font-black text-xs shadow-md border ${
-                    isCurrent
-                      ? 'wax-seal-gold text-amber-950 border-amber-300'
-                      : isDone
-                      ? 'wax-seal text-white border-red-400'
-                      : 'bg-[#221a14] text-[#867664] border-[#423223]'
-                  }`}
-                >
-                  {isDone ? '✓' : step.num}
-                </div>
-                <span className="text-[10px] font-heading font-semibold mt-1 text-[#d8cebe] whitespace-nowrap">
-                  {step.label}
-                </span>
-              </div>
-            );
-          })}
+    <div className="max-w-4xl mx-auto p-3 sm:p-6 space-y-6 text-[#f3ece0]">
+      {/* ÜST İLERLEME ÇUBUĞU (7 ADIM) */}
+      <div className="parchment-sheet p-4 sm:p-5 rounded-2xl border-2 border-[#54412e] shadow-2xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#443322] pb-3">
+          <LegendOfTheCouncilLogo size="sm" showSubtitle />
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <span className="text-xs font-mono font-bold text-amber-300 px-2.5 py-1 rounded bg-[#18110b] border border-amber-900/60 shadow">
+              Karakter Yaratımı · Adım {adim} / 7
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-heading font-bold">
+          {['1. Tür', '2. Irk', '3. Köken', '4. Hane/Meslek', '5. Yaklaşım', '6. Uzmanlık', '7. Aspectler'].map((label, idx) => (
+            <div
+              key={label}
+              className={`p-1.5 rounded border transition-all ${
+                adim === idx + 1
+                  ? 'bg-amber-900 border-amber-400 text-white font-black shadow ring-1 ring-amber-300'
+                  : adim > idx + 1
+                  ? 'bg-[#18120e] border-emerald-700 text-emerald-300'
+                  : 'bg-[#120d09] border-[#312317] text-[#6b5b4c]'
+              }`}
+            >
+              {label}
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Error / Validation Warning */}
-      {hataMesaji && (
-        <div className="mb-4 bg-red-950/90 border border-red-700 p-3 rounded text-red-200 text-xs flex items-center gap-2 animate-shake">
-          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-          <span>{hataMesaji}</span>
-        </div>
-      )}
-
-      {/* Step Content Card */}
-      <div className="parchment-sheet rounded-xl border-2 border-[#5a4430] p-5 sm:p-8 shadow-2xl relative min-h-[460px] flex flex-col justify-between">
-        {/* STEP 1: Hane ve İsim */}
+      {/* ADIM İÇERİKLERİ */}
+      <div className="parchment-sheet p-5 sm:p-6 rounded-2xl border-2 border-[#54412e] shadow-2xl min-h-[380px] flex flex-col justify-between space-y-4">
+        {/* ADIM 1: TÜR SEÇİMİ */}
         {adim === 1 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-5">
-              <h2 className="font-heading font-bold text-xl text-amber-200">
-                1. Adım: Hane Seçimi ve Karakter Adı
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-heading font-black text-base text-amber-300 uppercase tracking-wide">
+                Adım 1: Tür Seçimi (Altı Tür)
               </h2>
-              <p className="text-xs text-[#a99c8b]">
-                Hangi kanın ve sancağın gölgesinde yemin ettin? Haneniz sayfanın ve zırhınızın renklerini tayin eder.
+              <p className="text-xs text-[#a99c8b] font-serif">
+                Tür ölçek tavanını belirler. İnsan-olmayan türlerde Ölçek tavanı 8&apos;dir (Yönetici).
               </p>
             </div>
 
-            <div className="mb-5">
-              <label className="block text-xs uppercase font-heading text-[#c5b49f] mb-1">
-                Karakter Adı &amp; Lakabı *
-              </label>
-              <input
-                type="text"
-                placeholder="Örn: Goran Demirkanat, Lyra Vespera..."
-                value={ad}
-                onChange={(e) => setAd(e.target.value)}
-                className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-2 text-base text-[#f5ecd8] focus:outline-none focus:border-amber-500 font-serif"
-              />
-            </div>
-
-            <label className="block text-xs uppercase font-heading text-[#c5b49f] mb-2">
-              Büyük Haneler (12 Hane)
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
-              {(Object.keys(HANELER) as Hane[]).map((hKey) => {
-                const info = HANELER[hKey];
-                const isSelected = hane === hKey;
-                return (
-                  <button
-                    key={hKey}
-                    type="button"
-                    onClick={() => {
-                      setHane(hKey);
-                      sound.playSealStamp();
-                    }}
-                    className={`p-2.5 rounded-lg border text-left transition-all relative ${
-                      isSelected
-                        ? 'bg-[#271d15] border-amber-400 shadow-md ring-1 ring-amber-400'
-                        : 'bg-[#18130e] border-[#3e2e20] hover:border-[#674e35]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div
-                        className="w-3.5 h-3.5 rounded-full border shadow-sm"
-                        style={{ backgroundColor: info.renk, borderColor: info.ikincilRenk }}
-                      />
-                      <span className="font-heading font-bold text-xs text-[#f1e6d4]">
-                        {info.ad.split(' ')[0]}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-[#9a8976] line-clamp-2">
-                      {info.amblem}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Selected House Preview Card */}
-            <div
-              className="mt-4 p-3 rounded border text-xs flex items-center justify-between"
-              style={{
-                backgroundColor: `${haneInfo.renk}18`,
-                borderColor: haneInfo.renk,
-              }}
-            >
-              <div>
-                <span className="font-bold font-heading text-sm text-[#f5ebd7]">
-                  {haneInfo.ad}
-                </span>
-                <span className="text-[#a49583] block text-[11px]">
-                  Eyalet: {haneInfo.eyalet} • &quot;{haneInfo.motto}&quot;
-                </span>
-              </div>
-              <span
-                className="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
-                style={{ backgroundColor: haneInfo.renk, color: haneInfo.ikincilRenk }}
-              >
-                {haneInfo.motifi}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: Köken */}
-        {adim === 2 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-5">
-              <h2 className="font-heading font-bold text-xl text-amber-200">
-                2. Adım: Sosyal Köken
-              </h2>
-              <p className="text-xs text-[#a99c8b]">
-                Hangi beşikten geldin? Çamurdan mı, mermer saraylardan mı yoksa tanrıların unutulmuş kanından mı?
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                {
-                  id: 'Halk',
-                  baslik: 'Halk (Köylü, Esnaf, Çırak, Asker)',
-                  aciklama: 'Toprağı elleriyle işlemiş, zorluklarla yoğrulmuş dayanıklı beden. Şehir sokaklarını ve halkın dilini iyi bilir.',
-                  avantaj: 'Direnç: Yorgunluk eşiği ve fiziksel dayanıklılık kontrollerinde avantaj.',
-                },
-                {
-                  id: 'Soylu',
-                  baslik: 'Soylu (Aristokrat, Hanedan Kanı)',
-                  aciklama: 'Özel eğitmenler, saray protokolü ve kanunlarla yetiştirilmiş asilzade. Diplomasi ve emir verme yeteneği yüksektir.',
-                  avantaj: 'İmtiyaz: +1 Ün ile başlar, kurultayda söz hakkı ve mahkemelerde ayrıcalık.',
-                },
-                {
-                  id: 'Kutsal Kan İddiası',
-                  baslik: 'Kutsal Kan İddiası (Kayıp Veliaht, Rün Seçilmişi)',
-                  aciklama: 'Damarlarında kadim çağlardan kalma bir miras taşıdığını iddia eden veya bunu gizlemeye çalışan tekinsiz fert.',
-                  avantaj: 'Kader Çekimi: +1 Mühür kapasitesi, fakat Şüphe sayacı 1 puanla başlar.',
-                },
-              ].map((k) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+              {(['İnsan', 'Zieli', 'Irun', 'Yaban', 'Kadim-Kan', 'Meren'] as TurAdi[]).map((tur) => (
                 <div
-                  key={k.id}
-                  onClick={() => setKoken(k.id as any)}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                    koken === k.id
-                      ? 'bg-[#271d15] border-amber-400 ring-1 ring-amber-400'
-                      : 'bg-[#18130e] border-[#3e2e20] hover:border-[#674e35]'
+                  key={tur}
+                  onClick={() => setSeciliTur(tur)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all space-y-1 ${
+                    seciliTur === tur
+                      ? 'bg-[#2a1d13] border-amber-400 text-white shadow-lg ring-1 ring-amber-400'
+                      : 'bg-[#15110d] border-[#3b2b1d] text-[#c4b5a2] hover:border-[#674e35]'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-heading font-bold text-sm text-[#f1e6d4]">
-                      {k.baslik}
-                    </span>
-                    {koken === k.id && (
-                      <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                    )}
-                  </div>
-                  <p className="text-xs text-[#a49583] mb-2">{k.aciklama}</p>
-                  <div className="text-[11px] font-semibold text-amber-300/90 bg-[#120e0b] px-2 py-1 rounded inline-block">
-                    {k.avantaj}
-                  </div>
+                  <strong className="font-heading text-sm text-[#f5ebd7] block">{tur}</strong>
+                  <span className="text-[10px] text-[#8e7e6d] block">
+                    {tur === 'İnsan' ? 'Başsancak, ova ve hudut insanı. Ölçek tavanı: 10.' : 'Kadim varlık. Ölçek tavanı: 8 (Yönetici).'}
+                  </span>
                 </div>
               ))}
             </div>
+          </div>
+        )}
 
-            <div className="mt-4">
-              <label className="block text-xs uppercase font-heading text-[#c5b49f] mb-1">
-                Mevcut Rütbe veya San
+        {/* ADIM 2: IRK SEÇİMİ */}
+        {adim === 2 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-heading font-black text-base text-amber-300 uppercase tracking-wide">
+                Adım 2: Irk ve Eğilim Yaklaşımı
+              </h2>
+              <p className="text-xs text-[#a99c8b] font-serif">
+                Her ırkın bir Eğilim Yaklaşımı vardır: 5. adımdaki dağılımda o Yaklaşım en az +2 yapılmalıdır.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+              {Object.keys(TUR_VE_IRKLAR)
+                .filter((k) => TUR_VE_IRKLAR[k].tur === seciliTur)
+                .map((key) => {
+                  const irk = TUR_VE_IRKLAR[key];
+                  return (
+                    <div
+                      key={key}
+                      onClick={() => setSeciliIrkKey(key)}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all space-y-1.5 ${
+                        seciliIrkKey === key
+                          ? 'bg-[#2a1d13] border-amber-400 text-white shadow-lg ring-1 ring-amber-400'
+                          : 'bg-[#15110d] border-[#3b2b1d] text-[#c4b5a2] hover:border-[#674e35]'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <strong className="font-heading text-sm text-[#f5ebd7]">{irk.ad}</strong>
+                        <span className="text-[10px] bg-amber-950 text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-800">
+                          {irk.egilimYaklasimi}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#ded1be] font-serif">{irk.kimlik}</p>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* ADIM 3: KÖKEN (SOYLU / HALKTAN) */}
+        {adim === 3 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-heading font-black text-base text-amber-300 uppercase tracking-wide">
+                Adım 3: Soylu mu, Halktan mı?
+              </h2>
+              <p className="text-xs text-[#a99c8b] font-serif">
+                Soylu olmak hem güç hem boyunduruktur. Halktan olmak ise özgürlük ve yüksek Yenileme sunar.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              {/* Soylu Kartı */}
+              <div
+                onClick={() => setSeciliKoken('Soylu')}
+                className={`p-4 rounded-2xl border-2 cursor-pointer transition-all space-y-2 ${
+                  seciliKoken === 'Soylu'
+                    ? 'bg-[#2a1d13] border-amber-400 shadow-xl ring-2 ring-amber-400'
+                    : 'bg-[#15110d] border-[#3b2b1d] opacity-80 hover:opacity-100'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-heading font-black text-base text-[#f5ecd8]">Soylu</h3>
+                </div>
+                <div className="space-y-1 text-[#ded1be]">
+                  <p><strong>Başlangıç Ölçeği:</strong> 5 (Soylu Aile)</p>
+                  <p><strong>Yenileme Kotası:</strong> 3 Kader Puanı</p>
+                  <p><strong>Köken:</strong> 8 Büyük Hane Mirası (ilk ücretsiz Uzmanlık)</p>
+                  <p><strong>Zayıf Kanadı:</strong> Hane yükümlülüğü veya onurla ilgili olmalı</p>
+                </div>
+              </div>
+
+              {/* Halktan Kartı */}
+              <div
+                onClick={() => setSeciliKoken('Halktan')}
+                className={`p-4 rounded-2xl border-2 cursor-pointer transition-all space-y-2 ${
+                  seciliKoken === 'Halktan'
+                    ? 'bg-[#2a1d13] border-amber-400 shadow-xl ring-2 ring-amber-400'
+                    : 'bg-[#15110d] border-[#3b2b1d] opacity-80 hover:opacity-100'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-heading font-black text-base text-[#f5ecd8]">Halktan</h3>
+                </div>
+                <div className="space-y-1 text-[#ded1be]">
+                  <p><strong>Başlangıç Ölçeği:</strong> 2 (Sıradan Halk)</p>
+                  <p><strong>Yenileme Kotası:</strong> 4 Kader Puanı (Daha esnek!)</p>
+                  <p><strong>Köken:</strong> Eyalet + 18 Meslek Hüneri (ilk ücretsiz Uzmanlık)</p>
+                  <p><strong>Zayıf Kanadı:</strong> Meslek Yükü (&quot;Borçlar Beni Kovalar&quot; vb.)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ADIM 4: HANE VEYA EYALET + MESLEK */}
+        {adim === 4 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-heading font-black text-base text-amber-300 uppercase tracking-wide">
+                Adım 4: {seciliKoken === 'Soylu' ? 'Hane Mirası Seçimi' : 'Eyalet ve Meslek Seçimi'}
+              </h2>
+              <p className="text-xs text-[#a99c8b] font-serif">
+                Bu seçim sana ilk ücretsiz Uzmanlığını ve hikâye kökenini kazandırır.
+              </p>
+            </div>
+
+            {/* İsim & Görsel Girişi */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs p-3 rounded-xl bg-[#140f0c] border border-[#3b2b1d]">
+              <div>
+                <label className="text-[10px] uppercase font-bold text-[#8d7c6b] block mb-1">Karakter Adı:</label>
+                <input
+                  type="text"
+                  value={ad}
+                  onChange={(e) => setAd(e.target.value)}
+                  placeholder="Örn: Ren, Kaelen, Lyra..."
+                  className="w-full bg-[#1b1510] border border-[#443322] rounded p-2 text-amber-200 font-heading font-bold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-[#8d7c6b] block mb-1">Portre Fotoğraf URL:</label>
+                <input
+                  type="text"
+                  value={fotoUrl}
+                  onChange={(e) => setFotoUrl(e.target.value)}
+                  className="w-full bg-[#1b1510] border border-[#443322] rounded p-2 text-stone-300 font-mono text-[11px]"
+                />
+              </div>
+            </div>
+
+            {seciliKoken === 'Soylu' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                {Object.keys(SEKIZ_HANE).map((hKey) => {
+                  const h = SEKIZ_HANE[hKey];
+                  return (
+                    <div
+                      key={hKey}
+                      onClick={() => setSeciliHaneKey(hKey)}
+                      className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
+                        seciliHaneKey === hKey
+                          ? 'bg-[#2b1f14] border-amber-400 text-white shadow ring-1 ring-amber-400'
+                          : 'bg-[#15110d] border-[#3b2b1d] text-[#c4b5a2]'
+                      }`}
+                    >
+                      <strong className="font-heading font-bold block text-sm text-[#f5ebd7]">{h.ad}</strong>
+                      <span className="text-[10px] text-amber-300 block font-bold mt-0.5">{h.haneMirasi}</span>
+                      <p className="text-[10px] text-[#8e7e6d] font-serif italic mt-1">{h.motto}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  {Object.keys(ON_SEKIZ_MESLEK).map((mKey) => {
+                    const m = ON_SEKIZ_MESLEK[mKey];
+                    return (
+                      <div
+                        key={mKey}
+                        onClick={() => setSeciliMeslekKey(mKey)}
+                        className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
+                          seciliMeslekKey === mKey
+                            ? 'bg-[#2b1f14] border-amber-400 text-white shadow ring-1 ring-amber-400'
+                            : 'bg-[#15110d] border-[#3b2b1d] text-[#c4b5a2]'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <strong className="font-heading font-bold text-sm text-[#f5ebd7]">{m.ad}</strong>
+                          <span className="text-[9px] text-[#8e7e6d]">{m.oneriYaklasim}</span>
+                        </div>
+                        <span className="text-[10px] text-amber-300 font-bold block">{m.meslekHüneri}</span>
+                        <span className="text-[9px] text-red-300 block">Yük: {m.yuk}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ADIM 5: 14 YAKLAŞIM DAĞILIMI */}
+        {adim === 5 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-heading font-black text-base text-amber-300 uppercase tracking-wide">
+                Adım 5: On Dört Yaklaşım Dağılımı
+              </h2>
+              <p className="text-xs text-[#a99c8b] font-serif">
+                Kural Piramidi: <strong>+4 (1 tane)</strong>, <strong>+3 (2 tane)</strong>, <strong>+2 (3 tane)</strong>, <strong>+1 (3 tane)</strong>, <strong>0 (2 tane)</strong>, <strong>−1 (3 tane)</strong>.
+                Irkın Eğilim Yaklaşımı ({guncelIrk.egilimYaklasimi}) en az +2 olmalıdır.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-xs">
+              {(Object.keys(YAKLASIMLAR) as YaklasimAdi[]).map((yAd) => {
+                const val = yaklasimlar[yAd];
+                const isEgilim = yAd === guncelIrk.egilimYaklasimi;
+                return (
+                  <div key={yAd} className="p-2 rounded-lg bg-[#16120e] border border-[#3b2b1d] text-center space-y-1">
+                    <span className="font-heading font-bold text-[#f5ebd7] block text-xs truncate">
+                      {yAd}
+                    </span>
+                    {isEgilim && (
+                      <span className="text-[8px] bg-amber-950 text-amber-300 font-bold px-1 rounded block">
+                        Eğilim
+                      </span>
+                    )}
+                    <select
+                      value={val}
+                      onChange={(e) => handleYaklasimDegis(yAd, Number(e.target.value))}
+                      className="w-full bg-[#1b1510] text-amber-300 font-mono font-bold border border-[#443322] rounded p-1 text-xs text-center"
+                    >
+                      <option value={4}>+4</option>
+                      <option value={3}>+3</option>
+                      <option value={2}>+2</option>
+                      <option value={1}>+1</option>
+                      <option value={0}>0</option>
+                      <option value={-1}>−1</option>
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ADIM 6: UZMANLIKLAR */}
+        {adim === 6 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-heading font-black text-base text-amber-300 uppercase tracking-wide">
+                Adım 6: Üç Uzmanlık Seçimi
+              </h2>
+              <p className="text-xs text-[#a99c8b] font-serif">
+                İlk Uzmanlık 4. adımdaki Hanenden veya Mesleğinden gelir. Kalan 2 tanesini özgürce belirleyebilirsin.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 rounded-lg bg-[#16120e] border border-[#3b2b1d] space-y-1">
+                <label className="text-[10px] uppercase font-bold text-amber-400">1. Uzmanlık (Hane Mirası / Meslek Hüneri):</label>
+                <input
+                  type="text"
+                  value={uzmanlik1}
+                  onChange={(e) => setUzmanlik1(e.target.value)}
+                  className="w-full bg-[#1b1510] border border-[#443322] rounded p-2 text-stone-200"
+                />
+              </div>
+
+              <div className="p-3 rounded-lg bg-[#16120e] border border-[#3b2b1d] space-y-1">
+                <label className="text-[10px] uppercase font-bold text-amber-400">2. Uzmanlık (Dövüş / Becerik / Taktik):</label>
+                <input
+                  type="text"
+                  value={uzmanlik2}
+                  onChange={(e) => setUzmanlik2(e.target.value)}
+                  placeholder="Örn: Çünkü müttefik yanımdayken omuz omuza Ghardello ile +2..."
+                  className="w-full bg-[#1b1510] border border-[#443322] rounded p-2 text-stone-200"
+                />
+              </div>
+
+              <div className="p-3 rounded-lg bg-[#16120e] border border-[#3b2b1d] space-y-1">
+                <label className="text-[10px] uppercase font-bold text-amber-400">3. Uzmanlık (Sosyal / Keşif / Savunma):</label>
+                <input
+                  type="text"
+                  value={uzmanlik3}
+                  onChange={(e) => setUzmanlik3(e.target.value)}
+                  placeholder="Örn: Sahnede bir kez, bir lordun adını öne sürerek..."
+                  className="w-full bg-[#1b1510] border border-[#443322] rounded p-2 text-stone-200"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 p-2.5 rounded bg-[#1b140f] border border-purple-900 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={yasakIlim}
+                  onChange={(e) => setYasakIlim(e.target.checked)}
+                  className="rounded border-[#443322]"
+                />
+                <span className="text-purple-300 font-bold">
+                  Yasak İlim Uzmanlığı: Loth ile doğaüstü büyü yapma izni (Bedel risklidir!).
+                </span>
               </label>
+            </div>
+          </div>
+        )}
+
+        {/* ADIM 7: BEŞ ASPECT VE 3 CÜMLELİK GEÇMİŞ */}
+        {adim === 7 && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-heading font-black text-base text-amber-300 uppercase tracking-wide">
+                Adım 7: Beş Aspect ve Üç Cümlelik Geçmiş
+              </h2>
+              <p className="text-xs text-[#a99c8b] font-serif">
+                Aspect hem silahtır hem yük. Kader Puanı harcayarak çağrılır (+2 / zar yenileme); başın belaya girdiğinde ise zorlanır (+1 Kader Puanı).
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-amber-400">1. Unvan ve Kader:</label>
+                <input
+                  type="text"
+                  value={unvanVeKader}
+                  onChange={(e) => setUnvanVeKader(e.target.value)}
+                  placeholder="Örn: Selya Rıhtımının Kılıcı, Altına Yemin Etmiş..."
+                  className="w-full bg-[#18130e] border border-[#443322] rounded p-2 text-amber-200 font-serif italic"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-red-400">2. Zayıf Kanadı / Yük (Trouble):</label>
+                <input
+                  type="text"
+                  value={zayifKanadi}
+                  onChange={(e) => setZayifKanadi(e.target.value)}
+                  placeholder="Örn: Borçlar Beni Kovalar..."
+                  className="w-full bg-[#18130e] border border-red-900 rounded p-2 text-red-200 font-serif italic"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-blue-400">3. Sadakat Bağı:</label>
+                <input
+                  type="text"
+                  value={sadakatBagi}
+                  onChange={(e) => setSadakatBagi(e.target.value)}
+                  placeholder="Örn: Eski Birlik Kardeşim Haldor’a Borçluyum..."
+                  className="w-full bg-[#18130e] border border-[#443322] rounded p-2 text-blue-200 font-serif italic"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-bold text-stone-400">4. Serbest Aspect 1:</label>
+                <input
+                  type="text"
+                  value={serbest1}
+                  onChange={(e) => setSerbest1(e.target.value)}
+                  placeholder="Örn: Kör Yengeç’te Hep Bir Masam Var..."
+                  className="w-full bg-[#18130e] border border-[#443322] rounded p-2 text-stone-200 font-serif italic"
+                />
+              </div>
+
+              <div className="sm:col-span-2 space-y-1">
+                <label className="text-[10px] uppercase font-bold text-stone-400">5. Serbest Aspect 2:</label>
+                <input
+                  type="text"
+                  value={serbest2}
+                  onChange={(e) => setSerbest2(e.target.value)}
+                  placeholder="Örn: Gümüş Damarlı Kılıcın Sırrı..."
+                  className="w-full bg-[#18130e] border border-[#443322] rounded p-2 text-stone-200 font-serif italic"
+                />
+              </div>
+            </div>
+
+            {/* Geçmiş 3 Cümle */}
+            <div className="p-3 rounded-xl bg-[#140f0c] border border-[#3b2b1d] space-y-2 text-xs">
+              <span className="text-[10px] uppercase font-bold text-amber-300 block">Karakteri Tanımlayan Üç Cümle (Geçmiş):</span>
               <input
                 type="text"
-                placeholder="Örn: Yüzbaşı, Acemi Kolcu, Kaçak Vezin, Çırak..."
-                value={rutbe}
-                onChange={(e) => setRutbe(e.target.value)}
-                className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-1.5 text-xs text-[#f5ecd8] focus:outline-none"
+                value={gecmis1}
+                onChange={(e) => setGecmis1(e.target.value)}
+                placeholder="1. Cümle: Köken ve çocukluk..."
+                className="w-full bg-[#18130f] border border-[#443322] rounded p-1.5 text-stone-300 text-xs"
+              />
+              <input
+                type="text"
+                value={gecmis2}
+                onChange={(e) => setGecmis2(e.target.value)}
+                placeholder="2. Cümle: Yükselen çatışma ve ilk büyük yara..."
+                className="w-full bg-[#18130f] border border-[#443322] rounded p-1.5 text-stone-300 text-xs"
+              />
+              <input
+                type="text"
+                value={gecmis3}
+                onChange={(e) => setGecmis3(e.target.value)}
+                placeholder="3. Cümle: Masadaki bir dostla kesişen yol..."
+                className="w-full bg-[#18130f] border border-[#443322] rounded p-1.5 text-stone-300 text-xs"
               />
             </div>
           </div>
         )}
 
-        {/* STEP 3: Meslek */}
-        {adim === 3 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-5">
-              <h2 className="font-heading font-bold text-xl text-amber-200">
-                3. Adım: Meslek ve Hünerler
-              </h2>
-              <p className="text-xs text-[#a99c8b]">
-                Stallhart evreninde 8 temel meslek vardır. Her meslek 3 özel Hüner ve 1 karakteristik Zaaf taşır.
-              </p>
-            </div>
+        {/* ALT BUTONLAR */}
+        <div className="flex items-center justify-between border-t border-[#443322] pt-4">
+          <button
+            onClick={adim === 1 ? onIptal : oncekiAdim}
+            className="px-4 py-2 rounded bg-[#201812] hover:bg-[#31251b] text-stone-300 font-heading text-xs border border-[#443322] flex items-center gap-1.5"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>{adim === 1 ? 'İptal' : 'Geri'}</span>
+          </button>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
-              {Object.keys(MESLEKLER).map((mKey) => {
-                const m = MESLEKLER[mKey];
-                const isSelected = meslek === mKey;
-                return (
-                  <div
-                    key={mKey}
-                    onClick={() => {
-                      setMeslek(mKey);
-                      sound.playSealStamp();
-                    }}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      isSelected
-                        ? 'bg-[#271d15] border-amber-400 shadow-md ring-1 ring-amber-400'
-                        : 'bg-[#18130e] border-[#3e2e20] hover:border-[#674e35]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-heading font-bold text-sm text-[#f1e6d4]">
-                        {m.ad}
-                      </span>
-                      {isSelected && <CheckCircle2 className="w-4 h-4 text-amber-400" />}
-                    </div>
-                    <p className="text-[11px] text-[#9d8c79] line-clamp-2 mb-2">
-                      {m.aciklama}
-                    </p>
-
-                    {/* Hünerler */}
-                    <div className="space-y-1 mb-2">
-                      {m.hunerler.map((h, i) => (
-                        <div key={i} className="text-[10px] text-[#c9bbaa]">
-                          <span className="text-amber-400 font-semibold">• {h.ad}:</span>{' '}
-                          {h.aciklama}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Zaaf */}
-                    <div className="text-[10px] text-red-300 font-semibold bg-red-950/40 px-1.5 py-0.5 rounded border border-red-900/40">
-                      Zaaf: {m.zaaf.ad} ({m.zaaf.aciklama})
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: Üç Evre (Three Phases) */}
-        {adim === 4 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-5">
-              <h2 className="font-heading font-bold text-xl text-amber-200">
-                4. Adım: Üç Evre (Background / Hikaye)
-              </h2>
-              <p className="text-xs text-[#a99c8b]">
-                Karakterinizin geçmişini tek cümlelik kırılma anlarıyla özetleyin. Bu evreler daha sonra Görünüşlerinize can verecek.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs uppercase font-heading text-amber-300 mb-1">
-                  1. Evre: Köken (İlk Yıllar ve Ayrılış)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Örn: Selya sınırında bir çiftlikte büyüdüm ama harami baskınında evim yandı."
-                  value={ucEvre.koken}
-                  onChange={(e) => setUcEvre({ ...ucEvre, koken: e.target.value })}
-                  className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-2 text-xs text-[#f5ecd8] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-heading text-amber-300 mb-1">
-                  2. Evre: Yükselen Çatışma (Büyük Sınav veya Felaket)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Örn: Kurultay muhafızları komutanımı idama götürürken arşivi ateşe verip kaçtım."
-                  value={ucEvre.yukselenCatisma}
-                  onChange={(e) => setUcEvre({ ...ucEvre, yukselenCatisma: e.target.value })}
-                  className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-2 text-xs text-[#f5ecd8] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-heading text-amber-300 mb-1">
-                  3. Evre: Konuk Yıldız (Başka Bir Oyuncu veya NPC ile Kesişme)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Örn: Z'ela bataklıklarında Lyra ile sırt sırta verip engizisyon cellatlarını atlattık."
-                  value={ucEvre.konukYildiz}
-                  onChange={(e) => setUcEvre({ ...ucEvre, konukYildiz: e.target.value })}
-                  className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-2 text-xs text-[#f5ecd8] focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 5: Puan Dağıtımı (20 Puan Sayaç) */}
-        {adim === 5 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-heading font-bold text-xl text-amber-200">
-                  5. Adım: Yetenek Dağıtımı (20 Puan Havuzu)
-                </h2>
-                <p className="text-xs text-[#a99c8b]">
-                  Nitelikler (9), Beceriler (8) ve Luck (3). Her bir değer en fazla 3 olabilir.
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] text-[#a1907e] font-heading block">
-                  Kalan Puanlar
-                </span>
-                <span className="font-mono font-black text-xl text-amber-300">
-                  {kalanToplamPuan} / 20
-                </span>
-              </div>
-            </div>
-
-            {/* Nitelikler Grubu (Maks 9) */}
-            <div className="bg-[#17120e] p-3 rounded border border-[#3e2e20] mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-heading font-bold text-[#d4af37]">
-                  Nitelikler (0 - 3) [Kalan: {kalanNitelik}]
-                </span>
-                <span className="text-[10px] text-[#867563]">
-                  Toplam 9 Puan Harcanabilir
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as (keyof Nitelikler)[]).map((stat) => (
-                  <div
-                    key={stat}
-                    className="flex items-center justify-between bg-[#221a13] p-1.5 rounded border border-[#4a3726]"
-                  >
-                    <span className="font-heading font-bold text-xs text-[#d8cbba]">
-                      {stat}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNitelikler({
-                            ...nitelikler,
-                            [stat]: Math.max(0, nitelikler[stat] - 1),
-                          })
-                        }
-                        className="w-5 h-5 bg-[#33251a] rounded text-xs text-amber-200 font-bold"
-                      >
-                        -
-                      </button>
-                      <span className="w-4 text-center font-mono font-bold text-sm text-amber-300">
-                        {nitelikler[stat]}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={nitelikler[stat] >= 3 || kalanNitelik <= 0}
-                        onClick={() =>
-                          setNitelikler({
-                            ...nitelikler,
-                            [stat]: nitelikler[stat] + 1,
-                          })
-                        }
-                        className="w-5 h-5 bg-[#33251a] disabled:opacity-30 rounded text-xs text-amber-200 font-bold"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Beceriler Grubu (Maks 8) */}
-            <div className="bg-[#17120e] p-3 rounded border border-[#3e2e20] mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-heading font-bold text-[#d4af37]">
-                  Beceriler (0 - 3) [Kalan: {kalanBeceri}]
-                </span>
-                <span className="text-[10px] text-[#867563]">
-                  Toplam 8 Puan Harcanabilir
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {(
-                  [
-                    'Fight',
-                    'Shoot',
-                    'Stealth',
-                    'Investigate',
-                    'Lore',
-                    'ProvokeManipulate',
-                  ] as (keyof Beceriler)[]
-                ).map((bec) => (
-                  <div
-                    key={bec}
-                    className="flex items-center justify-between bg-[#221a13] p-1.5 rounded border border-[#4a3726]"
-                  >
-                    <span className="font-heading font-semibold text-[11px] text-[#d8cbba] truncate max-w-[70px]">
-                      {bec}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setBeceriler({
-                            ...beceriler,
-                            [bec]: Math.max(0, beceriler[bec] - 1),
-                          })
-                        }
-                        className="w-5 h-5 bg-[#33251a] rounded text-xs text-amber-200 font-bold"
-                      >
-                        -
-                      </button>
-                      <span className="w-4 text-center font-mono font-bold text-sm text-cyan-300">
-                        {beceriler[bec]}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={beceriler[bec] >= 3 || kalanBeceri <= 0}
-                        onClick={() =>
-                          setBeceriler({
-                            ...beceriler,
-                            [bec]: beceriler[bec] + 1,
-                          })
-                        }
-                        className="w-5 h-5 bg-[#33251a] disabled:opacity-30 rounded text-xs text-amber-200 font-bold"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Luck (3 Puan) */}
-            <div className="flex items-center justify-between bg-[#1f1711] p-2.5 rounded border border-[#4e3927]">
-              <div>
-                <span className="font-heading font-bold text-xs text-amber-300 block">
-                  Luck (Şans / Kader) (0 - 3)
-                </span>
-                <span className="text-[10px] text-[#93826e]">
-                  Başlangıç Mühür Puanı = 2 + Luck
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLuck(Math.max(0, luck - 1))}
-                  className="w-6 h-6 bg-[#33251a] rounded text-xs text-amber-200 font-bold"
-                >
-                  -
-                </button>
-                <span className="font-mono font-bold text-base text-amber-300">
-                  {luck}
-                </span>
-                <button
-                  type="button"
-                  disabled={luck >= 3}
-                  onClick={() => setLuck(luck + 1)}
-                  className="w-6 h-6 bg-[#33251a] disabled:opacity-30 rounded text-xs text-amber-200 font-bold"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 6: Görünüşler (5 Aspects) */}
-        {adim === 6 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-5">
-              <h2 className="font-heading font-bold text-xl text-amber-200">
-                6. Adım: Görünüşler (Fate Aspects)
-              </h2>
-              <p className="text-xs text-[#a99c8b]">
-                Görünüşler, zar atışlarında Mühür harcayarak lehinize çevirdiğiniz veya Anlatıcının aleyhinize tetikleyerek size Mühür kazandırdığı kader cümleleridir.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs uppercase font-heading text-amber-400 mb-1">
-                  1. Ana Kavram (High Concept) * [Zorunlu]
-                </label>
-                <input
-                  type="text"
-                  placeholder="Örn: Stallhart Sınırlarının Kıdemli Kılıcı..."
-                  value={gorunumler.anaKavram}
-                  onChange={(e) => setGorunumler({ ...gorunumler, anaKavram: e.target.value })}
-                  className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-1.5 text-xs text-[#f5ecd8] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-heading text-red-400 mb-1">
-                  2. Dert (Trouble) * [Zorunlu]
-                </label>
-                <input
-                  type="text"
-                  placeholder="Örn: Ödenmemiş Kan Borcu ve Şarap Zaafı..."
-                  value={gorunumler.dert}
-                  onChange={(e) => setGorunumler({ ...gorunumler, dert: e.target.value })}
-                  className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-1.5 text-xs text-[#f5ecd8] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-heading text-[#c5b49f] mb-1">
-                  3. Geçmişten Gelen (Past)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Örn: Dama Sancağı Altında On Beş Kuşatma..."
-                  value={gorunumler.gecmis}
-                  onChange={(e) => setGorunumler({ ...gorunumler, gecmis: e.target.value })}
-                  className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-1.5 text-xs text-[#f5ecd8] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-heading text-[#c5b49f] mb-1">
-                  4. Çatışmadan Gelen (Conflict)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Örn: Galetsha Tefecileri Peşimde..."
-                  value={gorunumler.catisma}
-                  onChange={(e) => setGorunumler({ ...gorunumler, catisma: e.target.value })}
-                  className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-1.5 text-xs text-[#f5ecd8] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase font-heading text-[#c5b49f] mb-1">
-                  5. Bağ (Bond)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Örn: Küçük Kardeşimin Mabed'deki Kefareti..."
-                  value={gorunumler.bag}
-                  onChange={(e) => setGorunumler({ ...gorunumler, bag: e.target.value })}
-                  className="w-full bg-[#17130f] border border-[#55402c] rounded px-3 py-1.5 text-xs text-[#f5ecd8] focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 7: Ekipman ve 20 Aronluk Dükkan */}
-        {adim === 7 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-heading font-bold text-xl text-amber-200">
-                  7. Adım: Ekipman ve Heybe
-                </h2>
-                <p className="text-xs text-[#a99c8b]">
-                  Başlangıç sermayeniz 20 Aron. Seçtiğiniz eşyalar Yük limitinizi (5 + STR: {maksYuk}) aşmamalıdır.
-                </p>
-              </div>
-              <div className="flex items-center gap-4 text-right">
-                <div>
-                  <span className="text-[10px] text-[#a1907e] font-heading block">Kalan Aron</span>
-                  <span className="font-mono font-bold text-lg text-amber-300">
-                    {aron} Aron
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#a1907e] font-heading block">Yük</span>
-                  <span
-                    className={`font-mono font-bold text-lg ${
-                      toplamYuk > maksYuk ? 'text-red-400' : 'text-stone-300'
-                    }`}
-                  >
-                    {toplamYuk} / {maksYuk}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-              {HAZIR_ESYALAR.map((esya) => {
-                const isSelected = seciliEsyalar.some((e) => e.id === esya.id);
-                return (
-                  <div
-                    key={esya.id}
-                    onClick={() => handleEsyaSecToggle(esya)}
-                    className={`p-2.5 rounded border cursor-pointer transition-all flex items-center justify-between ${
-                      isSelected
-                        ? 'bg-[#2a1e15] border-amber-400 ring-1 ring-amber-400'
-                        : 'bg-[#18130e] border-[#3e2e20] hover:border-[#674e35]'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-semibold text-xs text-[#f1e6d4] flex items-center gap-1.5">
-                        <span>{esya.ad}</span>
-                        {esya.zirhPuani && (
-                          <span className="text-[10px] text-amber-300 font-mono">
-                            (+{esya.zirhPuani} Zırh)
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-[#8e7e6d]">
-                        {esya.tur} • {esya.yuk} Yük • {esya.fiyat} Aron
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={`text-xs px-2 py-0.5 rounded font-bold ${
-                        isSelected
-                          ? 'bg-amber-700 text-white'
-                          : 'bg-[#2b2118] text-[#a99a89]'
-                      }`}
-                    >
-                      {isSelected ? 'Kuşanıldı' : 'Satın Al'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 8: Fotoğraf Ekleme & Gemini Analizi */}
-        {adim === 8 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-5">
-              <h2 className="font-heading font-bold text-xl text-amber-200">
-                8. Adım: Karakter Portresi &amp; Görsel Arşiv
-              </h2>
-              <p className="text-xs text-[#a99c8b]">
-                Karakterinize bir yüz verin. Görselinizi yükleyebilir ve Gemini ile Stallhart evreni bağlamında tahlil ettirebilirsiniz.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
-              {/* Preview Box */}
-              <div className="flex flex-col items-center">
-                <div
-                  className={`w-36 h-44 rounded-lg overflow-hidden border-4 shadow-2xl bg-black flex items-center justify-center relative transition-all ${
-                    sepyaFiltresi ? 'sepia-[0.35] contrast-105' : ''
-                  }`}
-                  style={{ borderColor: haneInfo.renk }}
-                >
-                  {fotoUrl ? (
-                    <img
-                      src={fotoUrl}
-                      alt="Portre"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-center p-3">
-                      <Camera className="w-10 h-10 mx-auto text-[#624e3a] mb-2" />
-                      <span className="text-xs text-[#8c7760]">Portre Bekleniyor</span>
-                    </div>
-                  )}
-                  {/* House Heraldry Seal */}
-                  <div
-                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shadow"
-                    style={{ backgroundColor: haneInfo.renk, color: haneInfo.ikincilRenk }}
-                  >
-                    {hane[0]}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 mt-3">
-                  <label className="text-xs text-[#a39482] cursor-pointer flex items-center gap-1.5">
-                    <input
-                      type="checkbox"
-                      checked={sepyaFiltresi}
-                      onChange={(e) => setSepyaFiltresi(e.target.checked)}
-                      className="rounded bg-[#1a140f] border-[#4f3c2b]"
-                    />
-                    <span>Eskitilmiş Parşömen / Sepya Filtresi</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Upload & Gemini AI Analysis */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs uppercase font-heading text-[#c5b49f] mb-1">
-                    Cihazdan Fotoğraf Yükle
-                  </label>
-                  <label className="flex items-center justify-center gap-2 p-3 bg-[#18130e] hover:bg-[#251d16] border border-dashed border-[#55402c] rounded-lg cursor-pointer text-xs text-amber-200 transition-colors">
-                    <Upload className="w-4 h-4 text-amber-400" />
-                    <span>Portre Dosyası Seç (PNG, JPG)</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFotoUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* Gemini AI Understanding Response */}
-                {analizYukleniyor ? (
-                  <div className="p-3 bg-[#17120e] rounded border border-[#443322] text-xs text-amber-300 flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-                    <span>Gemini Arşivcisi portrenizi tahlil ediyor...</span>
-                  </div>
-                ) : geminiPortreAnalizi ? (
-                  <div className="p-3 bg-[#1c1611] rounded border border-[#5a4430] text-xs text-[#d8cebe] space-y-1">
-                    <div className="font-heading font-bold text-amber-300 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Arşivcinin Portre Yorumu (Gemini AI)</span>
-                    </div>
-                    <p className="italic text-[11px] leading-relaxed">
-                      &quot;{geminiPortreAnalizi}&quot;
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 9: Özet ve Balmumu Mühür ile Onay */}
-        {adim === 9 && (
-          <div>
-            <div className="border-b border-[#443324] pb-3 mb-5">
-              <h2 className="font-heading font-bold text-xl text-amber-200">
-                9. Adım: Karakter Kâğıdı Özeti &amp; Mühürleme
-              </h2>
-              <p className="text-xs text-[#a99c8b]">
-                Tüm kayıtlar tamamlandı. Aşağıdaki özeti kontrol edip kırmızı balmumu mührü basarak karakterinizi arşive kaydedin.
-              </p>
-            </div>
-
-            <div className="bg-[#16120e] p-4 rounded-lg border border-[#443322] space-y-3 text-xs mb-4">
-              <div className="flex items-center justify-between border-b border-[#312519] pb-2">
-                <div>
-                  <span className="font-heading font-black text-lg text-amber-200">
-                    {ad}
-                  </span>
-                  <span className="text-[#a49583] block">
-                    {haneInfo.ad} • {meslek} ({koken})
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-amber-400 font-mono font-bold text-base">
-                    {aron} Aron
-                  </span>
-                  <span className="text-[10px] text-[#867563] block">
-                    Yara Kutuları: {hesaplaMaksYaraKutusu(nitelikler.CON)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="font-bold text-amber-400 block mb-1">
-                    Nitelikler
-                  </span>
-                  <div className="text-[11px] text-[#cfc1b0]">
-                    STR: +{nitelikler.STR} | DEX: +{nitelikler.DEX} | CON: +{nitelikler.CON} | INT: +{nitelikler.INT} | WIS: +{nitelikler.WIS} | CHA: +{nitelikler.CHA}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-bold text-cyan-300 block mb-1">
-                    Beceriler
-                  </span>
-                  <div className="text-[11px] text-[#cfc1b0]">
-                    Fight: +{beceriler.Fight} | Shoot: +{beceriler.Shoot} | Stealth: +{beceriler.Stealth} | Investigate: +{beceriler.Investigate} | Lore: +{beceriler.Lore} | Provoke: +{beceriler.ProvokeManipulate}
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-[#312519] pt-2">
-                <span className="font-bold text-amber-300 block">
-                  Ana Kavram: {gorunumler.anaKavram}
-                </span>
-                <span className="font-bold text-red-400 block">
-                  Dert: {gorunumler.dert}
-                </span>
-              </div>
-            </div>
-
-            <div className="text-center py-2">
-              <button
-                type="button"
-                onClick={handleMuhuBasVeTamamla}
-                className="py-3.5 px-8 font-heading font-black text-base rounded wax-seal text-white hover:brightness-110 active:scale-95 transition-all shadow-xl inline-flex items-center gap-2"
-              >
-                <Sparkles className="w-5 h-5 text-amber-300" />
-                <span>MÜHRÜ BAS VE OYUNA BAŞLA</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Wizard Footer Navigation Buttons */}
-        <div className="border-t border-[#3c2e20] pt-4 mt-6 flex items-center justify-between">
-          {adim > 1 ? (
+          {adim < 7 ? (
             <button
-              type="button"
-              onClick={oncekiAdimaGit}
-              className="px-4 py-2 text-xs font-heading font-semibold rounded bg-[#251d16] hover:bg-[#382b20] text-[#cfc2b1] border border-[#523d2b] flex items-center gap-1.5"
+              onClick={sonrakiAdim}
+              className="px-5 py-2 rounded wax-seal text-white font-heading font-bold text-xs shadow flex items-center gap-1.5"
             >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Geri</span>
+              <span>Sonraki Adım</span>
+              <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
             <button
-              type="button"
-              onClick={onIptal}
-              className="px-4 py-2 text-xs font-heading font-semibold rounded bg-[#251d16] hover:bg-[#382b20] text-[#a99a89] border border-[#443323]"
+              onClick={handleTamamla}
+              className="px-6 py-2 rounded wax-seal text-white font-heading font-black text-xs shadow-xl ring-2 ring-amber-400 flex items-center gap-1.5"
             >
-              İptal
-            </button>
-          )}
-
-          {adim < 9 && (
-            <button
-              type="button"
-              onClick={sonrakiAdimaGec}
-              className="px-5 py-2 text-xs font-heading font-bold rounded bg-[#3b2a1a] hover:bg-[#523b24] text-amber-200 border border-[#785734] shadow flex items-center gap-1.5"
-            >
-              <span>İlerle</span>
-              <ChevronRight className="w-4 h-4" />
+              <CheckCircle2 className="w-4 h-4 text-amber-300" />
+              <span>Karakteri Doğur ve Mühürle</span>
             </button>
           )}
         </div>

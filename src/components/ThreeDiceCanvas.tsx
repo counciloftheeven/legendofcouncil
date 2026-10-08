@@ -9,7 +9,36 @@ interface ThreeDiceCanvasProps {
   haneRenk?: string;
 }
 
-// Generate canvas texture for cube faces
+// Cache textures globally so they are created once and reused across rolls
+let cachedTextures: THREE.Material[] | null = null;
+
+function getSharedMaterials(): THREE.Material[] {
+  if (cachedTextures) return cachedTextures;
+
+  const texPlus = createFaceTexture('+', '#f59e0b', '#1a140d'); // Amber Gold
+  const texMinus = createFaceTexture('−', '#ef4444', '#1f1111'); // Blood Red
+  const texZero = createFaceTexture('○', '#867664', '#151311'); // Slate Grey
+
+  const matPlus = new THREE.MeshStandardMaterial({
+    map: texPlus,
+    roughness: 0.35,
+    metalness: 0.3,
+  });
+  const matMinus = new THREE.MeshStandardMaterial({
+    map: texMinus,
+    roughness: 0.35,
+    metalness: 0.3,
+  });
+  const matZero = new THREE.MeshStandardMaterial({
+    map: texZero,
+    roughness: 0.45,
+    metalness: 0.2,
+  });
+
+  // 0: +X (-), 1: -X (-), 2: +Y (+), 3: -Y (+), 4: +Z (0), 5: -Z (0)
+  cachedTextures = [matMinus, matMinus, matPlus, matPlus, matZero, matZero];
+  return cachedTextures;
+}
 function createFaceTexture(symbol: string, color: string, bg: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -170,32 +199,8 @@ export const ThreeDiceCanvas: React.FC<ThreeDiceCanvasProps> = ({
   onSettle,
   haneRenk = '#d4af37',
 }) => {
-  // Generate shared face materials for 4dF:
-  // 2 faces +, 2 faces -, 2 faces 0
-  const materials = useMemo(() => {
-    const texPlus = createFaceTexture('+', '#f59e0b', '#1a140d'); // Amber Gold
-    const texMinus = createFaceTexture('−', '#ef4444', '#1f1111'); // Blood Red
-    const texZero = createFaceTexture('○', '#867664', '#151311'); // Slate Grey
-
-    const matPlus = new THREE.MeshStandardMaterial({
-      map: texPlus,
-      roughness: 0.35,
-      metalness: 0.3,
-    });
-    const matMinus = new THREE.MeshStandardMaterial({
-      map: texMinus,
-      roughness: 0.35,
-      metalness: 0.3,
-    });
-    const matZero = new THREE.MeshStandardMaterial({
-      map: texZero,
-      roughness: 0.45,
-      metalness: 0.2,
-    });
-
-    // 0: +X (-), 1: -X (-), 2: +Y (+), 3: -Y (+), 4: +Z (0), 5: -Z (0)
-    return [matMinus, matMinus, matPlus, matPlus, matZero, matZero];
-  }, []);
+  // Use shared materials (cached) for 4dF dice
+  const materials = useMemo(() => getSharedMaterials(), []);
 
   const [settled, setSettled] = useState(!isRolling);
 
@@ -223,7 +228,8 @@ export const ThreeDiceCanvas: React.FC<ThreeDiceCanvasProps> = ({
       <Canvas
         camera={{ position: [0, 1.8, 4.6], fov: 42 }}
         shadows
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        frameloop={isRolling || !settled ? 'always' : 'demand'}
       >
         <ambientLight intensity={1.1} />
         <directionalLight position={[4, 8, 5]} intensity={2.2} castShadow shadow-mapSize={512} />

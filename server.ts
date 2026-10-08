@@ -33,11 +33,59 @@ if (apiKey) {
 interface RoomEvent {
   id: string;
   sender: string;
-  type: 'zar' | 'muhur' | 'sahne' | 'anlati' | 'fisilti' | 'durum';
+  type: 'zar' | 'muhur' | 'sahne' | 'anlati' | 'fisilti' | 'durum' | 'hasar' | 'chat';
   payload: any;
   timestamp: string;
   target?: string;
 }
+
+interface ConnectedPlayer {
+  id: string;
+  name: string;
+  role: 'Anlatıcı' | 'Oyuncu';
+  characterId?: string;
+  characterName?: string;
+  characterHouse?: string;
+  lastSeen: number;
+}
+
+interface RoomData {
+  id: string;
+  title: string;
+  created: number;
+  activeScene?: string;
+  activeAspects?: string[];
+  players: Record<string, ConnectedPlayer>;
+  events: RoomEvent[];
+}
+
+const rooms = new Map<string, RoomData>();
+
+// Helper to generate a clean 6-character room code (e.g. "ARAV26")
+function generateRoomCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// Cleanup inactive players every 60s
+setInterval(() => {
+  const now = Date.now();
+  for (const [roomId, room] of rooms.entries()) {
+    for (const [pId, player] of Object.entries(room.players)) {
+      if (now - player.lastSeen > 120000) { // 2 mins timeout
+        delete room.players[pId];
+      }
+    }
+    // Delete room if empty for more than 1 hour
+    if (Object.keys(room.players).length === 0 && now - room.created > 3600000) {
+      rooms.delete(roomId);
+    }
+  }
+}, 60000);
 
 const eventLog: RoomEvent[] = [];
 
@@ -176,6 +224,163 @@ app.post('/api/sync/broadcast', (req, res) => {
     eventLog.shift(); // retain last 200 events
   }
   res.json({ success: true, event });
+});
+
+// ==========================================
+// MULTIPLAYER ROOM API (Online Arkadaşlar Lobi & Zar)
+// ==========================================
+
+// 1. Yeni Oda Oluştur (GM)
+app.post('/api/rooms/create', (req, res) => {
+  const { title, hostName, characterId, characterName, characterHouse } = req.body;
+  const roomId = generateRoomCode();
+  const hostId = `host_${Date.now().toString(36)}`;
+
+  const hostPlayer: ConnectedPlayer = {
+    id: hostId,
+    name: hostName || 'Anlatıcı (Aldris)',
+    role: 'Anlatıcı',
+    characterId,
+    characterName,
+    characterHouse,
+    lastSeen: Date.now()
+  };
+
+  const newRoom: RoomData = {
+    id: roomId,
+    title: title || `Stallhart Seferi #${roomId}`,
+    created: Date.now(),
+    activeAspects: ['Arava Sarayı: Taç Divanı', 'Gergince Bekleyen Muhafızlar'],
+    players: {
+      [hostId]: hostPlayer
+    },
+    events: [
+      {
+        id: `ev_welcome_${Date.now()}`,
+        sender: 'Sistem',
+        type: 'anlati',
+        payload: { text: `Divan salonu açıldı. Oda Kodu: ${roomId}` },
+        timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+      }
+    ]
+  };
+
+  rooms.set(roomId, newRoom);
+  res.json({ success: true, roomId, hostId, room: newRoom });
+});
+
+// 2. Odaya Katıl (Oyuncu veya GM)
+app.post('/api/rooms/join', (req, res) => {
+  const { roomId, playerName, role, characterId, characterName, characterHouse } = req.body;
+  const upperCode = (roomId || '').trim().toUpperCase();
+  const room = rooms.get(upperCode);
+
+  if (!room) {
+    return res.status(404).json({ error: 'Bu kod ile bir divan odası bulunamadı.' });
+  }
+
+  const playerId = `pl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 5)}`;
+  const player: ConnectedPlayer = {
+    id: playerId,
+    name: playerName || 'Seyyah',
+    role: role === 'Anlatıcı' ? 'Anlatıcı' : 'Oyuncu',
+    characterId,
+    characterName,
+    characterHouse,
+    lastSeen: Date.now()
+  };
+
+  room.players[playerId] = player;
+
+  // Broadcast join event
+  const joinEvent: RoomEvent = {
+    id: `ev_join_${Date.now()}`,
+    sender: player.name,
+    type: 'anlati',
+    payload: { text: `${player.name} (${player.characterName || 'Karaktersiz'}) masaya katıldı.` },
+    timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+  };
+  room.events.push(joinEvent);
+
+  res.json({ success: true, roomId: upperCode, playerId, room });
+});
+
+// 3. Oda Durumunu Çek (Polling & State Sync)
+app.get('/api/rooms/:roomId', (req, res) => {
+  const upperCode = req.params.roomId.trim().toUpperCase();
+  const room = rooms.get(upperCode);
+
+  if (!room) {
+    return res.status(404).json({ error: 'Oda bulunamadı.' });
+  }
+
+  const since = Number(req.query.since || 0);
+  const events = room.events.slice(since);
+
+  res.json({
+    id: room.id,
+    title: room.title,
+    activeScene: room.activeScene,
+    activeAspects: room.activeAspects || [],
+    players: Object.values(room.players),
+    events,
+    totalEvents: room.events.length
+  });
+});
+
+// 4. Kalp Atışı (Presence Heartbeat)
+app.post('/api/rooms/:roomId/heartbeat', (req, res) => {
+  const upperCode = req.params.roomId.trim().toUpperCase();
+  const room = rooms.get(upperCode);
+  const { playerId, characterId, characterName } = req.body;
+
+  if (room && playerId && room.players[playerId]) {
+    room.players[playerId].lastSeen = Date.now();
+    if (characterId) room.players[playerId].characterId = characterId;
+    if (characterName) room.players[playerId].characterName = characterName;
+    return res.json({ success: true });
+  }
+  res.json({ success: false });
+});
+
+// 5. Odaya Canlı Olay / Zar / Fısıltı Gönder
+app.post('/api/rooms/:roomId/events', (req, res) => {
+  const upperCode = req.params.roomId.trim().toUpperCase();
+  const room = rooms.get(upperCode);
+
+  if (!room) {
+    return res.status(404).json({ error: 'Oda bulunamadı.' });
+  }
+
+  const { sender, type, payload, target } = req.body;
+  const event: RoomEvent = {
+    id: `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    sender: sender || 'Bilinmeyen',
+    type: type || 'zar',
+    payload,
+    timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    target
+  };
+
+  room.events.push(event);
+  if (room.events.length > 200) {
+    room.events.shift();
+  }
+
+  res.json({ success: true, event });
+});
+
+// 6. Ortam Durumlarını (Aspects) Güncelle
+app.post('/api/rooms/:roomId/aspects', (req, res) => {
+  const upperCode = req.params.roomId.trim().toUpperCase();
+  const room = rooms.get(upperCode);
+  if (!room) return res.status(404).json({ error: 'Oda bulunamadı.' });
+
+  const { aspects } = req.body;
+  if (Array.isArray(aspects)) {
+    room.activeAspects = aspects;
+  }
+  res.json({ success: true, activeAspects: room.activeAspects });
 });
 
 // Start dev or prod server

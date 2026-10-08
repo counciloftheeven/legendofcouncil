@@ -64,11 +64,12 @@ export const CampaignJournal: React.FC<CampaignJournalProps> = ({
   // Kilometre Taşları (Küçük, Orta, Büyük)
   const handleMilestone = (tur: 'kucuk' | 'orta' | 'buyuk') => {
     sound.playSealStamp();
+    const current = karakter.kilometreTaslari || { kucuk: 0, orta: 0, buyuk: 0 };
     onKarakterGuncelle({
       ...karakter,
       kilometreTaslari: {
-        ...karakter.kilometreTaslari,
-        [tur]: karakter.kilometreTaslari[tur] + 1,
+        ...current,
+        [tur]: (current[tur] || 0) + 1,
       },
     });
   };
@@ -147,7 +148,7 @@ export const CampaignJournal: React.FC<CampaignJournalProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-amber-300 text-base">
-                    {karakter.kilometreTaslari.kucuk}
+                    {karakter.kilometreTaslari?.kucuk ?? 0}
                   </span>
                   <button
                     onClick={() => handleMilestone('kucuk')}
@@ -170,7 +171,7 @@ export const CampaignJournal: React.FC<CampaignJournalProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-amber-300 text-base">
-                    {karakter.kilometreTaslari.orta}
+                    {karakter.kilometreTaslari?.orta ?? 0}
                   </span>
                   <button
                     onClick={() => handleMilestone('orta')}
@@ -193,7 +194,7 @@ export const CampaignJournal: React.FC<CampaignJournalProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-amber-300 text-base">
-                    {karakter.kilometreTaslari.buyuk}
+                    {karakter.kilometreTaslari?.buyuk ?? 0}
                   </span>
                   <button
                     onClick={() => handleMilestone('buyuk')}
@@ -213,15 +214,15 @@ export const CampaignJournal: React.FC<CampaignJournalProps> = ({
             </h3>
             <div className="flex justify-between p-2 rounded bg-[#16120e]">
               <span className="text-[#a49684]">İmparatorluk Şöhreti (Ün):</span>
-              <span className="font-bold text-amber-300">{karakter.ekonomi.un} Puan</span>
+              <span className="font-bold text-amber-300">{karakter.ekonomi?.un ?? 0} Puan</span>
             </div>
             <div className="flex justify-between p-2 rounded bg-[#16120e]">
               <span className="text-[#a49684]">Galetsha Banka Borcu:</span>
-              <span className="font-bold text-red-400">{karakter.ekonomi.borc} Aron</span>
+              <span className="font-bold text-red-400">{karakter.ekonomi?.borc ?? 0} Aron</span>
             </div>
             <div className="flex justify-between p-2 rounded bg-[#16120e]">
               <span className="text-[#a49684]">Adli Sicil Puanı:</span>
-              <span className="font-bold text-stone-300">{karakter.ekonomi.sicil}</span>
+              <span className="font-bold text-stone-300">{karakter.ekonomi?.sicil ?? 0}</span>
             </div>
           </div>
         </div>

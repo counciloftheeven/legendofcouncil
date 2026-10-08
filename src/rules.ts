@@ -1,382 +1,800 @@
 /**
- * STALLHART MASAÜSTÜ RPG KURAL MOTORU VE VERİ TANIMLARI
- * Fate tabanlı karanlık fantezi kural seti.
+ * STALLHART MASAÜSTÜ RPG SİSTEM REFERANS BELGESİ (SRD)
+ * Fate tabanlı 4dF sistemi · Sıfatlar Merdiveni · On Dört Yaklaşım
+ * "Aron hanar, Edron rion. Ezra gharan tod dor."
+ * (Altın kan, Demir birlik. Ölüme kadar savaşırız.)
  */
 
-export type Hane =
-  | 'Stallhart'
-  | 'Selya'
-  | 'Arhan'
-  | 'Galetsha'
-  | 'Onneva'
-  | 'Solgar'
-  | 'Memanth'
-  | 'Zela'
-  | 'Seltanya'
-  | 'Khasinya'
-  | 'Adamen'
-  | 'Mabed';
-
-export interface HaneInfo {
-  id: Hane;
-  ad: string;
-  unvan: string;
-  renk: string; // Vurgu hex
-  ikincilRenk: string;
-  amblem: string; // Örn: 'Altın Taç & Siyah-Beyaz Dama'
-  motifi: string;
+// ==========================================
+// 1. SIFATLAR MERDİVENİ (-2 Berbat .. +8 Efsanevi)
+// ==========================================
+export interface MerdivenBasamak {
+  deger: number;
+  baslik: string;
+  ingilizce: string;
+  renk: string;
   aciklama: string;
-  eyalet: string;
-  motto: string;
-  sinir: string;
-  lider: string;
 }
 
-export const HANELER: Record<Hane, HaneInfo> = {
-  Stallhart: {
-    id: 'Stallhart',
-    ad: 'Stallhart Hanedanı',
-    unvan: 'Kadim Taht & Kurultay Muhafızları',
-    renk: '#d4af37',
-    ikincilRenk: '#18181b',
-    amblem: 'Siyah-beyaz dama üzeri altın taç',
-    motifi: 'Dama & Taç',
-    aciklama: 'İmparatorluğun kurucu ve merkezi hanesi. Disiplin, kanun ve demir bürokrasi ile yönetir.',
-    eyalet: 'Merkez Eyalet - Stallhart Kalesi',
-    motto: 'Taş aşınır, Stallhart baki kalır.',
-    sinir: 'Karanlık Nehir boyu',
-    lider: 'Yüksek Naip Varis Aldris'
+export const SIFATLAR_MERDIVENI: MerdivenBasamak[] = [
+  { deger: 8, baslik: 'Efsanevi', ingilizce: 'Legendary', renk: 'text-amber-300 font-black', aciklama: 'Tarihe geçen, ilahi sınırındaki mucizevi kudret.' },
+  { deger: 7, baslik: 'Destansı', ingilizce: 'Epic', renk: 'text-amber-400 font-bold', aciklama: 'Kıtalar boyu yankılanan kahramanlık seviyesi.' },
+  { deger: 6, baslik: 'Muhteşem', ingilizce: 'Fantastic', renk: 'text-yellow-400 font-bold', aciklama: 'Destansı, şansa bağlı en yüksek ölümlü iş.' },
+  { deger: 5, baslik: 'Olağanüstü', ingilizce: 'Superb', renk: 'text-emerald-400 font-bold', aciklama: 'Sıradan insanların hayal bile edemeyeceği ustalık.' },
+  { deger: 4, baslik: 'Harika', ingilizce: 'Great', renk: 'text-teal-400 font-semibold', aciklama: 'Usta zanaatkâr ve kıdemli savaşçıların seviyesi.' },
+  { deger: 3, baslik: 'İyi', ingilizce: 'Good', renk: 'text-cyan-400 font-semibold', aciklama: 'Eğitimli ve ehil bir uzmanın doğal seviyesi.' },
+  { deger: 2, baslik: 'Makul', ingilizce: 'Fair', renk: 'text-blue-400', aciklama: 'Ehil olmayanların zorlandığı sağlam ortalama.' },
+  { deger: 1, baslik: 'Orta', ingilizce: 'Average', renk: 'text-indigo-300', aciklama: 'Gündelik sıradan kasabalı yeterliliği.' },
+  { deger: 0, baslik: 'Sıradan', ingilizce: 'Mediocre', renk: 'text-stone-400', aciklama: 'Çabasız iş; zar atmaya bile değmez.' },
+  { deger: -1, baslik: 'Zayıf', ingilizce: 'Poor', renk: 'text-orange-400', aciklama: 'Yetersiz, kusurlu ya da acemice deneme.' },
+  { deger: -2, baslik: 'Berbat', ingilizce: 'Terrible', renk: 'text-red-500 font-bold', aciklama: 'Tam bir fiyasko ve felaketle sonuçlanan adım.' }
+];
+
+export function merdivenDerecesiBul(toplam: number): string {
+  const match = SIFATLAR_MERDIVENI.find(m => m.deger === toplam);
+  if (match) return `${match.baslik} (${toplam >= 0 ? '+' : ''}${toplam})`;
+  if (toplam > 8) return `Efsanevi Ötesi (+${toplam})`;
+  return `Felaket (${toplam})`;
+}
+
+// Zorluklar
+export const ZORLUKLAR = {
+  Siradan: 0,   // Çabasız; zar atmaya değmez
+  Makul: 2,     // Ehil olmayan zorlanır
+  Harika: 4,    // Usta bile zorlanır
+  Muhtesem: 6   // Destansı, şansa bağlı iş
+};
+
+// ==========================================
+// 2. ON DÖRT YAKLAŞIM (14 APPROACHES)
+// ==========================================
+export type YaklasimKategori = 'Beden' | 'Söz ve Gölge' | 'Ağ ve Kaynak' | 'İlim ve Sezgi' | 'İrade';
+
+export type YaklasimAdi =
+  | 'Ghardello'
+  | 'Rax-ed'
+  | 'Lithron'
+  | 'Zel-vash'
+  | 'Lodvez'
+  | 'Ver-ed'
+  | 'Xes-hart'
+  | 'Vize-rion'
+  | 'Aronlid'
+  | 'Erau'
+  | 'Aldris'
+  | 'Loth'
+  | 'Vizer'
+  | 'Edor / Edros';
+
+export interface YaklasimDetay {
+  ad: YaklasimAdi;
+  kategori: YaklasimKategori;
+  fateKarsiligi: string;
+  kapsami: string;
+  hatRolu: string;
+  renk: string;
+}
+
+export const YAKLASIMLAR: Record<YaklasimAdi, YaklasimDetay> = {
+  'Ghardello': {
+    ad: 'Ghardello',
+    kategori: 'Beden',
+    fateKarsiligi: 'Fight (Yakın Dövüş)',
+    kapsami: 'Meydan talimi, kalkan duvarı nizami duruşu ve resmî Dello tekil düelloları.',
+    hatRolu: 'Fiziksel · Saldırı, Savunma',
+    renk: '#dc2626'
   },
+  'Rax-ed': {
+    ad: 'Rax-ed',
+    kategori: 'Beden',
+    fateKarsiligi: 'Shoot (Menzilli Dövüş)',
+    kapsami: 'Yay, tatar yayı, zırh delen arbaletler ve Meren zıpkınları.',
+    hatRolu: 'Fiziksel · Saldırı',
+    renk: '#ea580c'
+  },
+  'Lithron': {
+    ad: 'Lithron',
+    kategori: 'Beden',
+    fateKarsiligi: 'Physique (Beden Gücü)',
+    kapsami: 'Plaka zırh taşıma, maden kazması sallama, enkaz kaldırma, cüce gövde mukavemeti.',
+    hatRolu: '—',
+    renk: '#b45309'
+  },
+  'Zel-vash': {
+    ad: 'Zel-vash',
+    kategori: 'Beden',
+    fateKarsiligi: 'Athletics (Çeviklik)',
+    kapsami: 'Çevik manevra, bataklık ve sarp arazide denge, elf zarafeti ve Meren akışı.',
+    hatRolu: 'Fiziksel · Savunma',
+    renk: '#16a34a'
+  },
+  'Lodvez': {
+    ad: 'Lodvez',
+    kategori: 'Söz ve Gölge',
+    fateKarsiligi: 'Deceive (Aldatma)',
+    kapsami: 'Yalan, sahte itiraf, kılık değiştirme ve niyet gizleme.',
+    hatRolu: 'İtibar · Saldırı',
+    renk: '#9333ea'
+  },
+  'Ver-ed': {
+    ad: 'Ver-ed',
+    kategori: 'Söz ve Gölge',
+    fateKarsiligi: 'Rapport (İlişki Kurma)',
+    kapsami: 'Meclis teşrifatı, cüce yumruk açısı adabı, elf aristokratik hitabeti.',
+    hatRolu: 'İtibar · Savunma',
+    renk: '#3b82f6'
+  },
+  'Xes-hart': {
+    ad: 'Xes-hart',
+    kategori: 'Söz ve Gölge',
+    fateKarsiligi: 'Provoke (Kışkırtma, Baskı)',
+    kapsami: 'Kutsal Kan heybeti, Engizisyon tehdidi, düşmanı hata yapmaya zorlama.',
+    hatRolu: 'Zihinsel · Saldırı',
+    renk: '#e11d48'
+  },
+  'Vize-rion': {
+    ad: 'Vize-rion',
+    kategori: 'Ağ ve Kaynak',
+    fateKarsiligi: 'Contacts (Bağlantılar)',
+    kapsami: 'İstihbarat ağı, meyhane kulağı, liman fısıltıları, Aralis gözleri.',
+    hatRolu: '—',
+    renk: '#0284c7'
+  },
+  'Aronlid': {
+    ad: 'Aronlid',
+    kategori: 'Ağ ve Kaynak',
+    fateKarsiligi: 'Resources (Kaynaklar)',
+    kapsami: 'Solgar poliçeleri, banker kredisi, eyalet tahvili ve gümrük payları.',
+    hatRolu: '—',
+    renk: '#eab308'
+  },
+  'Erau': {
+    ad: 'Erau',
+    kategori: 'İlim ve Sezgi',
+    fateKarsiligi: 'İlahiyat (Din ve Teoloji)',
+    kapsami: 'Denge Konseyi’nin 6 Ezgisi, 15 Tanrı dogması, Mabed hukuku ve ritüeller.',
+    hatRolu: '—',
+    renk: '#8b5cf6'
+  },
+  'Aldris': {
+    ad: 'Aldris',
+    kategori: 'İlim ve Sezgi',
+    fateKarsiligi: 'Lore (Tarih, Hukuk, Kütük)',
+    kapsami: 'Vergi defterleri, imparatorluk fermanları, sınır protokolleri ve şecereler.',
+    hatRolu: 'İtibar · Savunma (hukuki itham)',
+    renk: '#0d9488'
+  },
+  'Loth': {
+    ad: 'Loth',
+    kategori: 'İlim ve Sezgi',
+    fateKarsiligi: 'Magic / Crafts / Alchemy (Büyü, Zanaat, Simya)',
+    kapsami: 'Galetsha simyası, maden gazları, dağlama yağları, zehirler ve yasak büyü kalıntıları.',
+    hatRolu: 'Zihinsel · Saldırı (büyü)',
+    renk: '#c026d3'
+  },
+  'Vizer': {
+    ad: 'Vizer',
+    kategori: 'İlim ve Sezgi',
+    fateKarsiligi: 'Investigate & Notice (Keşif ve Sezgi)',
+    kapsami: 'İnce detayları, sahte mühürleri, pusu izlerini ve vadi tuzaklarını sezme.',
+    hatRolu: 'Sosyal Kavga sırası',
+    renk: '#059669'
+  },
+  'Edor / Edros': {
+    ad: 'Edor / Edros',
+    kategori: 'İrade',
+    fateKarsiligi: 'Will (İrade ve Dirayet)',
+    kapsami: 'İşkencede çözülmeme, korkuya direnme, zihinsel tahakkümü püskürtme.',
+    hatRolu: 'Zihinsel · Savunma',
+    renk: '#4f46e5'
+  }
+};
+
+// Yaklaşım Dağılım Kuralı: +4 ×1, +3 ×2, +2 ×3, +1 ×3, 0 ×2, −1 ×3
+export const YAKLASIM_PIRAMIDI = {
+  dort: 1,    // +4
+  uc: 2,      // +3
+  iki: 3,     // +2
+  bir: 3,     // +1
+  sifir: 2,   // 0
+  eksiBir: 3  // -1
+};
+
+// ==========================================
+// 3. ÖLÇEK (TOPLUMUN MERDİVENİ - 10 BASAMAK)
+// ==========================================
+export interface OlcekBasamagi {
+  basamak: number;
+  unvan: string;
+  kimler: string;
+  aciklama: string;
+  baslangic?: 'Soylu' | 'Halktan';
+}
+
+export const OLCEK_MERDIVENI: OlcekBasamagi[] = [
+  { basamak: 10, unvan: 'İmparator', kimler: 'Tahtta oturan İmparator (Anxes); tanrısal otorite.', aciklama: 'Yalnızca Anlatıcı oynatır.' },
+  { basamak: 9, unvan: 'Kutsal Kan Sahibi', kimler: 'Stallhart hanedanı kanı; Kutsal Kan heybeti.', aciklama: 'Yalnızca insanlara aittir; oyun başlangıcı için çok ağırdır.' },
+  { basamak: 8, unvan: 'Yönetici', kimler: 'Kurultay’da görevli Şad, Vezir, Melik.', aciklama: 'Kadim insan-olmayan varlıkların tavanı.' },
+  { basamak: 7, unvan: 'General', kimler: 'Ordu komutanı, kıdemli komutan, Karabıçak başı.', aciklama: 'Binlerce askerin ve kale garnizonunun efendisi.' },
+  { basamak: 6, unvan: 'Vali Ailesi', kimler: 'Kale-şehir lordu (Kont), Vali/Han ve ailesi.', aciklama: 'Eyalet mülkünün ve divanının başı.' },
+  { basamak: 5, unvan: 'Soylu Aile', kimler: 'Baron/Ağa, Bey/Lord ailesi, tapınak başı.', aciklama: 'Soylu karakter başlangıcı (Yenileme: 3).', baslangic: 'Soylu' },
+  { basamak: 4, unvan: 'Asker', kimler: 'Nizami ordu mensubu: kale muhafızı, erbaş, subay.', aciklama: 'Sancak taşıyan resmî kolluk kuvveti.' },
+  { basamak: 3, unvan: 'Memur', kimler: 'Divan kâtibi, vergi ve gümrük görevlisi, kasaba kâhyası.', aciklama: 'Kütük ve mühür yetkilisi.' },
+  { basamak: 2, unvan: 'Sıradan Halk', kimler: 'Çiftçi, madenci, tüccar, paralı, kolcu.', aciklama: 'Halktan karakter başlangıcı (Yenileme: 4).', baslangic: 'Halktan' },
+  { basamak: 1, unvan: 'Köle', kimler: 'Mülk sayılan, hukuken hakkı olmayan kişi.', aciklama: 'Yalnızca Anlatıcı onayıyla oyuncu başlangıcı olur.' }
+];
+
+// ==========================================
+// 4. TÜR VE IRKLAR (6 TÜR, 12 IRK)
+// ==========================================
+export type TurAdi = 'İnsan' | 'Zieli' | 'Irun' | 'Yaban' | 'Kadim-Kan' | 'Meren';
+
+export interface IrkInfo {
+  ad: string;
+  tur: TurAdi;
+  kimlik: string;
+  egilimYaklasimi: YaklasimAdi;
+  anlaticiOnayi?: boolean;
+}
+
+export const TUR_VE_IRKLAR: Record<string, IrkInfo> = {
+  Eran: { ad: 'Eran', tur: 'İnsan', kimlik: 'Başsancak ve ova insanı; hane, kan ve yemin.', egilimYaklasimi: 'Ver-ed' },
+  Reth: { ad: 'Reth', tur: 'İnsan', kimlik: 'Arathen dağlısı; Kutsal Kanı reddeden, gizlice yetişmiş.', egilimYaklasimi: 'Lodvez' },
+  Galet_Insan: { ad: 'Galet', tur: 'İnsan', kimlik: 'Galetsha–Memanth dağ ve maden halkı; sert ve dirençli.', egilimYaklasimi: 'Lithron' },
+  Zieli_Elf: { ad: 'Zieli', tur: 'Zieli', kimlik: 'Yıldız elfi; kadim, zamana ve büyüye yakın.', egilimYaklasimi: 'Loth' },
+  Gaehan: { ad: 'Gaehan', tur: 'Zieli', kimlik: 'Kadim soy elfi; unutmayan, yavaş ve sabırlı.', egilimYaklasimi: 'Edor / Edros' },
+  Irun_Cuce: { ad: 'Irun', tur: 'Irun', kimlik: 'Adamen cücesi; çelik, taş ve işçilik.', egilimYaklasimi: 'Lithron' },
+  Lithan: { ad: 'Lithan', tur: 'Irun', kimlik: 'Taştan doğan yeraltı cücesi; Nimge’nin sessiz halkı.', egilimYaklasimi: 'Edor / Edros' },
+  Gorgar: { ad: 'Gorgar', tur: 'Yaban', kimlik: 'Yaban ork; sınır akınlarının ve cephenin askeri.', egilimYaklasimi: 'Ghardello' },
+  Mogar: { ad: 'Mogar', tur: 'Yaban', kimlik: 'Dev kanlı; iri, ağır, yılmaz.', egilimYaklasimi: 'Edor / Edros' },
+  Wolanli: { ad: 'Wolanlı', tur: 'Yaban', kimlik: 'Kurt ruhlu sürü soyu (Sarem kanı); iz ve bağ.', egilimYaklasimi: 'Vizer' },
+  Golgeli: { ad: 'Gölgeli', tur: 'Kadim-Kan', kimlik: 'Tshame’ye dokunulmuş; sessiz, görünmez, ürkütücü.', egilimYaklasimi: 'Lodvez' },
+  Xenor_Kanli: { ad: 'Xenor-kanlı', tur: 'Kadim-Kan', kimlik: 'Namon’dan sızan kan; yasak ve tehlikeli. Anlatıcı onayı.', egilimYaklasimi: 'Loth', anlaticiOnayi: true },
+  Meren: { ad: 'Meren', tur: 'Meren', kimlik: 'Okyanus halkı; sudan doğan deniz canlısı; akışkan, fırtına sezgili, zıpkın ustası. Irk seçmez, eğilim türden gelir.', egilimYaklasimi: 'Zel-vash' }
+};
+
+// ==========================================
+// 5. SEKİZ HANE (SOYLU: HANE MİRASI)
+// ==========================================
+export type Hane =
+  | 'Selya'
+  | 'Arhan'
+  | 'Onneva'
+  | 'Solgar'
+  | 'Liandryl'
+  | 'Sınglew'
+  | 'Khasin'
+  | 'Galet'
+  | 'Stallhart'
+  | 'Zela'
+  | 'Seltanya'
+  | 'Adamen'
+  | 'Mabed'
+  | 'Memanth'
+  | 'Galetsha'
+  | string;
+
+export interface HaneDetay {
+  id: Hane;
+  ad: string;
+  diyar: string;
+  haneMirasi: string;
+  haneMirasiDetay: string;
+  oneriYaklasim: YaklasimAdi;
+  motto: string;
+  renk: string;
+  ikincilRenk?: string;
+  eyalet?: string;
+  unvan?: string;
+  amblem?: string;
+  motifi?: string;
+  aciklama?: string;
+  lider?: string;
+  sinir?: string;
+}
+
+export const SEKIZ_HANE: Record<string, HaneDetay> = {
   Selya: {
     id: 'Selya',
-    ad: 'Selya Hanedanı',
-    unvan: 'Güneşin ve Kanın Şövalyeleri',
-    renk: '#800020',
-    ikincilRenk: '#e6b800',
-    amblem: 'Derin bordo zemin, altın güneş',
-    motifi: 'Altın Güneş',
-    aciklama: 'Kutsal ışık tarikatları ve ateşli mızrak süvarileriyle tanınır. Mağrur ve dini dogmalara bağlıdır.',
+    ad: 'Selya Hanesi',
+    diyar: 'Selya',
     eyalet: 'Selyanya Vadisi',
+    haneMirasi: 'Rıhtım Soyu',
+    haneMirasiDetay: 'Çünkü liman ve tersane ailemin işi, bir gemi ya da limanla ilgili Avantaj kurarken +2.',
+    oneriYaklasim: 'Vize-rion',
     motto: 'Karanlığı sadece yanan kan arındırır.',
-    sinir: 'Güneş Geçidi Dağları',
-    lider: 'Leydi Valeriya Selya'
+    renk: '#800020',
+    ikincilRenk: '#e6b800'
   },
   Arhan: {
     id: 'Arhan',
-    ad: 'Arhan Hanedanı',
-    unvan: 'Gece Kadehinin Sahipleri',
-    renk: '#8b1e2f',
-    ikincilRenk: '#ffffff',
-    amblem: 'Bordo üzeri altın kadeh ve beyaz kutup yıldızı',
-    motifi: 'Kadeh & Yıldız',
-    aciklama: 'Simyacılar, şarap tüccarları ve zehir ustalarının hanesi. Saray entrikalarında rakipsizdirler.',
-    eyalet: 'Arhan Kıyıları',
+    ad: 'Arhan Hanesi',
+    diyar: 'Galetsha',
+    eyalet: 'Galetsha / Arhan',
+    haneMirasi: 'Gözün Mirası',
+    haneMirasiDetay: 'Çünkü Arhan ağı casus işler, bir sırrı çözerken ya da saklarken Avantaj +2.',
+    oneriYaklasim: 'Vizer',
     motto: 'En tatlı kadeh, son yudumdur.',
-    sinir: 'Kırmızı Körfez',
-    lider: 'Kont Beren Arhan'
-  },
-  Galetsha: {
-    id: 'Galetsha',
-    ad: 'Galetsha Hanedanı',
-    unvan: 'Sırlı Kilitler ve Demir Kasa Loncası',
-    renk: '#2c2c2c',
-    ikincilRenk: '#eab308',
-    amblem: 'Kömür grisi zemin, parlak sarı anahtar',
-    motifi: 'Sarı Anahtar',
-    aciklama: 'Banka kasalarını, rehin sözleşmelerini ve zindan anahtarlarını ellerinde tutarlar. Borç affetmezler.',
-    eyalet: 'Galetsha Maden Havzası',
-    motto: 'Her sırrın bir kilidi, her kilidin bir bedeli vardır.',
-    sinir: 'Demirkapı Boğazı',
-    lider: 'Büyük Sayman Cassian Galetsha'
+    renk: '#8b1e2f',
+    ikincilRenk: '#ffffff'
   },
   Onneva: {
     id: 'Onneva',
-    ad: 'Onneva Hanedanı',
-    unvan: 'Kızıl Kül ve Ocak Savaşçıları',
-    renk: '#dc2626',
-    ikincilRenk: '#18181b',
-    amblem: 'Kömür siyahı, kızıl anka ve sarı alev dilleri',
-    motifi: 'Kızıl Anka & Ateş',
-    aciklama: 'Volkanik eteklerde yaşayan, küllerden doğan dövüşçüler. Asla teslim olmaz, ateşe taparlar.',
-    eyalet: 'Onnev Kül Yaylası',
+    ad: 'Onneva Hanesi',
+    diyar: 'Onneva',
+    eyalet: 'Onneva Ovası',
+    haneMirasi: 'Ovanın Bereketi',
+    haneMirasiDetay: 'Çünkü hasadı ve iaşeyi bilirim, kıtlık ve ikmal zorluklarında Aşma +2.',
+    oneriYaklasim: 'Aronlid',
     motto: 'Yanmayan demir şekil almaz.',
-    sinir: 'Kükürt Çatlağı',
-    lider: 'Ocakbeyi Kaelen Onneva'
+    renk: '#dc2626',
+    ikincilRenk: '#18181b'
   },
   Solgar: {
     id: 'Solgar',
-    ad: 'Solgar Hanedanı',
-    unvan: 'Gece Aynası ve Rüzgar Fısıldayanlar',
-    renk: '#0f172a',
-    ikincilRenk: '#38bdf8',
-    amblem: 'Gece mavisi, altın yusufçuk',
-    motifi: 'Altın Yusufçuk',
-    aciklama: 'Sessiz casuslar, göl balıkçıları ve rüya yorumcuları. Tehlikeyi günler öncesinden sezerler.',
-    eyalet: 'Solgar Sis Gölleri',
+    ad: 'Solgar Hanesi',
+    diyar: 'Solgar',
+    eyalet: 'Solgar Gölleri',
+    haneMirasi: 'Paranın Sesi',
+    haneMirasiDetay: 'Çünkü ticaret hanesinde yetiştim, altın ve borç pazarlıklarında +2.',
+    oneriYaklasim: 'Aronlid',
     motto: 'Rüzgarın yönünü sadece kanatları titreyen bilir.',
-    sinir: 'Aynalı Sazlıklar',
-    lider: 'Matriyark Selise Solgar'
+    renk: '#0f172a',
+    ikincilRenk: '#38bdf8'
+  },
+  Liandryl: {
+    id: 'Liandryl',
+    ad: 'Liandryl Hanesi',
+    diyar: 'Çukurtepe',
+    eyalet: 'Çukurtepe',
+    haneMirasi: 'Eski Kan',
+    haneMirasiDetay: 'Çünkü soyluluğum eski kayıtlara dayanır, soy ve miras tartışmalarında +2.',
+    oneriYaklasim: 'Aldris',
+    motto: 'Unutulan kan pas tutmaz.',
+    renk: '#374151',
+    ikincilRenk: '#9ca3af'
+  },
+  Sınglew: {
+    id: 'Sınglew',
+    ad: 'Sınglew Hanesi',
+    diyar: 'Memanth',
+    eyalet: 'Memanth Hududu',
+    haneMirasi: 'Hudutçunun Kılıcı',
+    haneMirasiDetay: 'Çünkü hududu savundum, dar geçit ve pusuya karşı Savunma +2.',
+    oneriYaklasim: 'Ghardello',
+    motto: 'Siper düşmeden baş eğilmez.',
+    renk: '#1f2937',
+    ikincilRenk: '#4b5563'
+  },
+  Khasin: {
+    id: 'Khasin',
+    ad: 'Khasin Hanesi',
+    diyar: 'Khasinya',
+    eyalet: 'Khasin Fiyortları',
+    haneMirasi: 'Ada Gölgesi',
+    haneMirasiDetay: 'Çünkü ailemde kehanet ve okült miras var, bir alamet ya da işareti okurken +2.',
+    oneriYaklasim: 'Erau',
+    motto: 'Buz merhamet tanımaz.',
+    renk: '#115e59',
+    ikincilRenk: '#f1f5f9'
+  },
+  Galet: {
+    id: 'Galet',
+    ad: 'Galet Hanesi',
+    diyar: 'Galetsha',
+    eyalet: 'Galetsha Maden Havzası',
+    haneMirasi: 'Derin Damar',
+    haneMirasiDetay: 'Çünkü madende büyüdüm, yeraltı ve göçük ortamında Aşma +2.',
+    oneriYaklasim: 'Lithron',
+    motto: 'Her sırrın bir kilidi vardır.',
+    renk: '#2c2c2c',
+    ikincilRenk: '#eab308'
+  },
+  Stallhart: {
+    id: 'Stallhart',
+    ad: 'Stallhart Hanedanı',
+    diyar: 'Arava / Taç Diyarı',
+    eyalet: 'Başsancak Arava',
+    haneMirasi: 'Tahtın Ağırlığı',
+    haneMirasiDetay: 'Çünkü imparatorluk sancağını taşırım, meclis ve divan oturumlarında Ver-ed ile +2.',
+    oneriYaklasim: 'Ver-ed',
+    motto: 'Aron hanar, Edron rion. Ezra gharan tod dor.',
+    renk: '#d4af37',
+    ikincilRenk: '#18181b'
   },
   Memanth: {
     id: 'Memanth',
-    ad: 'Memanth Hanedanı',
-    unvan: 'Yıkılmaz Burç ve Granit Muhafızları',
-    renk: '#1e293b',
-    ikincilRenk: '#ca8a04',
-    amblem: 'Karanlık lacivert, mat altın kale suru',
-    motifi: 'Mat Altın Kale',
-    aciklama: 'Dağ geçitlerindeki aşılmaz kalelerin efendileri. Ağır piyadeleri ve kuşatma makineleriyle ünlüdür.',
-    eyalet: 'Memanth Kayalıkları',
-    motto: 'Dağ çökerse, burçlarımız durur.',
-    sinir: 'Büyük Yarık Batı Yamacı',
-    lider: 'Garnizon Mareşali Goran Memanth'
+    ad: 'Memanth Hanesi',
+    diyar: 'Memanth',
+    eyalet: 'Memanth Hududu',
+    haneMirasi: 'Hudutçunun Kılıcı',
+    haneMirasiDetay: 'Çünkü hududu savundum, dar geçit ve pusuya karşı Savunma +2.',
+    oneriYaklasim: 'Ghardello',
+    motto: 'Siper düşmeden baş eğilmez.',
+    renk: '#1f2937',
+    ikincilRenk: '#4b5563'
   },
-  Zela: {
-    id: 'Zela',
-    ad: "Z'ela Hanedanı",
-    unvan: 'Bataklık Yılanları ve Eski Ahit Şamanları',
-    renk: '#2d4a22',
-    ikincilRenk: '#94a3b8',
-    amblem: 'Küf yeşili, kurşuni yılan dişi',
-    motifi: 'Yılan Dişi',
-    aciklama: 'Sazlıklarda yaşayan, kadim büyü ve zehirlerle mühürlü aile. Çürümeyi ve dirilişi birlikte taşırlar.',
-    eyalet: "Z'ela Bataklıkları",
-    motto: 'Batanlar unutulmaz, derinde bekler.',
-    sinir: 'Siyah Balçık Kanalı',
-    lider: "Yılan Ana Vespera Z'ela"
-  },
-  Seltanya: {
-    id: 'Seltanya',
-    ad: 'Seltanya Hanedanı',
-    unvan: 'Orman Tacı ve Boynuzlu Süvariler',
-    renk: '#14532d',
-    ikincilRenk: '#fef3c7',
-    amblem: 'Orman yeşili/krem zemin, altın boynuzlu koç',
-    motifi: 'Altın Koç',
-    aciklama: 'Uçsuz bucaksız kadim koruların bekçileri. Doğanın acımasız dengesini savunurlar.',
-    eyalet: 'Seltan Orman Eyaleti',
-    motto: 'Ağacın kökü kana açtır.',
-    sinir: 'Fısıldayan Koru Sınırı',
-    lider: 'Orman Reisi Ronin Seltanya'
-  },
-  Khasinya: {
-    id: 'Khasinya',
-    ad: 'Khasinya Hanedanı',
-    unvan: 'Kuzey Buzulu ve Kemik Yelkenliler',
-    renk: '#115e59',
-    ikincilRenk: '#f1f5f9',
-    amblem: 'Koyu teal deniz mavisi, kemik beyazı fırtına gülü',
-    motifi: 'Kemik & Fırtına',
-    aciklama: 'Buz denizlerini aşan sert denizciler. Deniz canavarlarının kemiklerinden zırh yaparlar.',
-    eyalet: 'Khasin Buz Fiyortları',
-    motto: 'Buz merhamet tanımaz.',
-    sinir: 'Donmuş Balina Burnu',
-    lider: 'Korsan Lordu Theron Khasinya'
-  },
-  Adamen: {
-    id: 'Adamen',
-    ad: 'Adamen Hanedanı',
-    unvan: 'Kartal Tepesi ve Yakut Ocakları',
-    renk: '#1e3a8a',
-    ikincilRenk: '#ef4444',
-    amblem: 'Lacivert zemin, karlı dağ silüeti ve kızıl yakut',
-    motifi: 'Dağ & Yakut',
-    aciklama: 'En yüksek zirvelerin efendileri. Yakut madenleri sayesinde zengin, kartalları sayesinde her şeyi görürler.',
-    eyalet: 'Adamen Zirveleri',
-    motto: 'Zirveden bakanlar boyun eğmez.',
-    sinir: 'Kartal Yuvası Uçurumu',
-    lider: 'Dük Dorian Adamen'
-  },
-  Mabed: {
-    id: 'Mabed',
-    ad: 'Mabed Muhafızlığı',
-    unvan: 'Denge Konseyi ve Kutsal Zırh Kardeşliği',
-    renk: '#3f6212',
-    ikincilRenk: '#1d4ed8',
-    amblem: 'Zeytin yeşili ve kraliyet mavisi, altın zırhlı el',
-    motifi: 'Zırhlı Adalet Eli',
-    aciklama: 'Seküler krallıklardan bağımsız, Mabed yasasını uygulayan yargıç-şövalyeler. Lekeli büyücüleri avlarlar.',
-    eyalet: 'Kutsal Şehir Mabed',
-    motto: 'Terazi eğilmez, kılıç tereddüt etmez.',
-    sinir: 'Yedi Çan Tapınak Bölgesi',
-    lider: 'Baş Yargıç Malakor'
+  Galetsha: {
+    id: 'Galetsha',
+    ad: 'Galetsha Hanesi',
+    diyar: 'Galetsha',
+    eyalet: 'Galetsha Maden Havzası',
+    haneMirasi: 'Derin Damar',
+    haneMirasiDetay: 'Çünkü madende büyüdüm, yeraltı ve göçük ortamında Aşma +2.',
+    oneriYaklasim: 'Lithron',
+    motto: 'Her sırrın bir kilidi vardır.',
+    renk: '#2c2c2c',
+    ikincilRenk: '#eab308'
   }
 };
 
-export interface Nitelikler {
-  STR: number;
-  DEX: number;
-  CON: number;
-  INT: number;
-  WIS: number;
-  CHA: number;
-}
+export const HANELER = SEKIZ_HANE;
 
-export interface Beceriler {
-  Fight: number;
-  Shoot: number;
-  Stealth: number;
-  Investigate: number;
-  Lore: number;
-  ProvokeManipulate: number;
-}
+// ==========================================
+// 6. ON SEKİZ MESLEK (HALKTAN: EYALET & MESLEK)
+// ==========================================
+export type MeslekKategori = 'Silah ve Yol' | 'Söz ve Gölge' | 'Emek, Deniz ve Ruh';
 
-export interface MeslekInfo {
+export interface MeslekDetay {
   ad: string;
-  aciklama: string;
-  roller: string;
-  hunerler: { ad: string; aciklama: string }[];
-  zaaf: { ad: string; aciklama: string };
-  oneriNitelik: keyof Nitelikler;
-  oneriBeceri: keyof Beceriler;
+  kategori: MeslekKategori;
+  meslekHüneri: string;
+  hunerMetni: string;
+  oneriYaklasim: YaklasimAdi;
+  yuk: string; // Zayıf Kanadı
+  yasakIlimZorunlu?: boolean;
 }
 
-export const MESLEKLER: Record<string, MeslekInfo> = {
+export const ON_SEKIZ_MESLEK: Record<string, MeslekDetay> = {
+  // Silah ve Yol
+  Kolcu: {
+    ad: 'Kolcu',
+    kategori: 'Silah ve Yol',
+    meslekHüneri: 'Yol Bekçisi',
+    hunerMetni: 'Çünkü yolları, kapıları ve geceyi bilirim; nöbet, kervan ve kapı sahnelerinde Vizer ile Avantaj Yaratırken +2.',
+    oneriYaklasim: 'Vizer',
+    yuk: 'Uykusuz Nöbetler'
+  },
+  Asker: {
+    ad: 'Asker',
+    kategori: 'Silah ve Yol',
+    meslekHüneri: 'Nizamın Kılıcı',
+    hunerMetni: 'Çünkü birlikte ve emirle savaşırım; bir birliğin ya da muhafız kalkan hattının içindeyken Ghardello ile Savunmada +2.',
+    oneriYaklasim: 'Ghardello',
+    yuk: 'Emre Bağlıyım'
+  },
   'Paralı Asker': {
     ad: 'Paralı Asker',
-    aciklama: 'Savaş meydanlarında pişmiş, kılıcını Aron karşılığı kiralayan gazi.',
-    roller: 'Ön hat dövüşçüsü, silah ustası, kuşatma tecrübesi',
-    hunerler: [
-      { ad: 'Çelik Kasırgası', aciklama: 'Birden fazla hedefe saldırırken +2 Vuruş sağlar.' },
-      { ad: 'Siper Ustası', aciklama: 'Kalkan kullanırken Savunma zarına +1 ek bonus verir.' },
-      { ad: 'Kan Kokusu', aciklama: 'Yaralı düşmanlara karşı Fight zarlarında +2 avantaj sağlar.' }
-    ],
-    zaaf: { ad: 'Altın Açlığı', aciklama: 'Ödeme geciktiğinde veya rüşvet teklif edildiğinde Dert tetiklenir.' },
-    oneriNitelik: 'STR',
-    oneriBeceri: 'Fight'
+    kategori: 'Silah ve Yol',
+    meslekHüneri: 'Sözleşme Kılıcı',
+    hunerMetni: 'Çünkü savaş benim işim; yanımda en az bir müttefik varken omuz omuza çarpışırken Ghardello ile Saldırı ve Savunmada +2.',
+    oneriYaklasim: 'Ghardello',
+    yuk: 'Borçlar Beni Kovalar'
   },
-  'Tfa Savaşçısı': {
-    ad: 'Tfa Savaşçısı',
-    aciklama: 'Gölge manastırlarında yetiştirilmiş, ritüel kılıç dövüşçüsü ve onur bekçisi.',
-    roller: 'Akrobatik düellocu, sessiz infazcı',
-    hunerler: [
-      { ad: 'Sessiz Darbe', aciklama: 'Fark edilmeden yapılan ilk vuruş zırhı yok sayar.' },
-      { ad: 'Tfa Dengesi', aciklama: 'Düşme veya devrilme durumlarında anında ayağa kalkar.' },
-      { ad: 'Gölge Adımı', aciklama: 'Karanlıkta Stealth kontrollerinde +2 ekler.' }
-    ],
-    zaaf: { ad: 'Şeref Andı', aciklama: 'Silahsız birine saldıramaz veya verilen sözü bozamaz.' },
-    oneriNitelik: 'DEX',
-    oneriBeceri: 'Fight'
+  Haydut: {
+    ad: 'Haydut',
+    kategori: 'Silah ve Yol',
+    meslekHüneri: 'Yol Kanunu',
+    hunerMetni: 'Çünkü hayatta kalmayı dağda ve sokakta öğrendim; kovalanırken, kaçarken ya da pusuda beklerken Zel-vash ile Aşmada +2.',
+    oneriYaklasim: 'Zel-vash',
+    yuk: 'Başıma Ödül Konmuş'
   },
-  'Kolcu': {
-    ad: 'Kolcu',
-    aciklama: 'Medeniyetin sınırındaki lanetli ormanlarda yaşayan iz sürücü ve keskin nişancı.',
-    roller: 'Yaban rehberi, pusucu, hayvan terbiyecisi',
-    hunerler: [
-      { ad: 'Avcı İzi', aciklama: 'İz sürerken Investigate zarına +2 ekler.' },
-      { ad: 'Yaban Hissi', aciklama: 'Pusuya düşürülmeyi önleyen sezgiye sahiptir.' },
-      { ad: 'Keskin Nişangah', aciklama: 'Uzak menzilli Shoot atışlarında +2 Vuruş verir.' }
-    ],
-    zaaf: { ad: 'Şehir Boğulması', aciklama: 'Kalabalık şehir merkezlerinde ve kapalı zindanlarda klostrofobi yaşar.' },
-    oneriNitelik: 'WIS',
-    oneriBeceri: 'Shoot'
+  Korsan: {
+    ad: 'Korsan',
+    kategori: 'Silah ve Yol',
+    meslekHüneri: 'Tuzlu Çengel',
+    hunerMetni: 'Çünkü abordajı bilirim; bir geminin güvertesinde ya da bordalama esnasında Ghardello ile Saldırıda +2.',
+    oneriYaklasim: 'Ghardello',
+    yuk: 'Limanlarda Aranıyorum'
   },
-  'Kâşif/Ozan-Casus': {
-    ad: 'Kâşif/Ozan-Casus',
-    aciklama: 'Saraylarda şarkı söyleyip han köşelerinde fısıltı toplayan diplomat ve istihbaratçı.',
-    roller: 'Sosyal manipülatör, şifre çözücü, sahtekar',
-    hunerler: [
-      { ad: 'Bin Surat', aciklama: 'Kılık değiştirme ve Provoke/Manipulate zarlarına +2 verir.' },
-      { ad: 'Çözülen Diller', aciklama: 'Bir kadeh içki ikram ettiğinde hedef sırrını açığa vurur.' },
-      { ad: 'Fısıltı Ağı', aciklama: 'Herhangi bir şehirde 1 saat içinde dedikodu ağını çözer.' }
-    ],
-    zaaf: { ad: 'Şüphe Çekme', aciklama: 'Yetkililerin dikkatini çeker, Şüphe sayacı iki kat hızlı yükselebilir.' },
-    oneriNitelik: 'CHA',
-    oneriBeceri: 'ProvokeManipulate'
+  'Avcı / İzci': {
+    ad: 'Avcı / İzci',
+    kategori: 'Silah ve Yol',
+    meslekHüneri: 'İz Sürücü',
+    hunerMetni: 'Çünkü ormanı okurum; iz sürerken, pusu kurarken ve vahşi doğada Vizer ile Avantaj Yaratırken +2.',
+    oneriYaklasim: 'Vizer',
+    yuk: 'Şehirde Yabancıyım'
   },
-  'Vezin (Büyücü)': {
-    ad: 'Vezin (Büyücü)',
-    aciklama: 'Dokuma kanallarını yönlendirip gerçekliğin dokusunu büken tehlikeli rün ustası.',
-    roller: 'Alan hasarı, zihin kontrolü, gizemli analiz',
-    hunerler: [
-      { ad: 'Dokuma Tınısı', aciklama: 'Lore zarı atarak rün büyüsü yapar; +2 güç sağlar.' },
-      { ad: 'Rün Patlaması', aciklama: 'Büyü saldırısıyla düşman kalkan ve zırhlarını çatlatır.' },
-      { ad: 'Zihin Fısıltısı', aciklama: 'Uzak mesafedeki zihinleri okur veya sahte görüntü yansıtır.' }
-    ],
-    zaaf: { ad: 'Leke Çekimi', aciklama: 'Büyü başarısız olduğunda veya 0 altı atıldığında anında +1 Leke alır.' },
-    oneriNitelik: 'INT',
-    oneriBeceri: 'Lore'
+
+  // Söz ve Gölge
+  Ozan: {
+    ad: 'Ozan',
+    kategori: 'Söz ve Gölge',
+    meslekHüneri: 'Meydan Şarkısı',
+    hunerMetni: 'Çünkü şarkı ve hikâye taşırım; bir halk kalabalığını ya da saray divanını etkilerken Ver-ed ile Avantaj Yaratırken +2.',
+    oneriYaklasim: 'Ver-ed',
+    yuk: 'Dilim Başıma Bela'
   },
-  'Şifacı': {
+  Laklakçı: {
+    ad: 'Laklakçı',
+    kategori: 'Söz ve Gölge',
+    meslekHüneri: 'Fısıltı Ağı',
+    hunerMetni: 'Çünkü her hanın, pazarın ve kapının dedikodusunu bilirim; bir haberi aramak ya da yaymak için Vize-rion ile Avantaj Yaratırken +2.',
+    oneriYaklasim: 'Vize-rion',
+    yuk: 'İki Efendiye Hizmet'
+  },
+  Casus: {
+    ad: 'Casus',
+    kategori: 'Söz ve Gölge',
+    meslekHüneri: 'Gölge Zanaatı',
+    hunerMetni: 'Çünkü kimlik, mühür ve kilit benim işimdir; gizlice sızarken, kimlik taklit ederken ya da belge çalarken Lodvez ile Aşmada +2.',
+    oneriYaklasim: 'Lodvez',
+    yuk: 'Kimliğim Çürüyor'
+  },
+  Elçi: {
+    ad: 'Elçi',
+    kategori: 'Söz ve Gölge',
+    meslekHüneri: 'Elçi Dokunulmazlığı',
+    hunerMetni: 'Çünkü bir lordun sözünü taşırım; sahnede bir kez, elçi sıfatımı öne sürerek ölümcül bir tehlikeden ya da tutuklamadan bedelsiz Aşma hakkı kazanırım.',
+    oneriYaklasim: 'Ver-ed',
+    yuk: 'Başkasının Sözüyle Konuşurum'
+  },
+  Diplomat: {
+    ad: 'Diplomat',
+    kategori: 'Söz ve Gölge',
+    meslekHüneri: 'Müzakere Ustası',
+    hunerMetni: 'Çünkü iki tarafın çıkarını da tartarım; müzakere masasında karşı tarafın zayıf noktasını açığa çıkarırken Ver-ed ile Avantaj Yaratırken +2.',
+    oneriYaklasim: 'Ver-ed',
+    yuk: 'Her Masada Bir Düşman'
+  },
+  'Kâtip / Arşivci': {
+    ad: 'Kâtip / Arşivci',
+    kategori: 'Söz ve Gölge',
+    meslekHüneri: 'Saatçi’nin Mürekkebi',
+    hunerMetni: 'Çünkü kayıtları, mühürleri ve soyağaçlarını bilirim; arşiv belgeleri, kütükler ve soy araştırmasında Aldris ile Avantaj Yaratırken +2.',
+    oneriYaklasim: 'Aldris',
+    yuk: 'Fazla Bilirim'
+  },
+
+  // Emek, Deniz ve Ruh
+  Denizci: {
+    ad: 'Denizci',
+    kategori: 'Emek, Deniz ve Ruh',
+    meslekHüneri: 'Tuzlu Bilek',
+    hunerMetni: 'Çünkü gemide yetiştim; gemi, liman mekanizmaları ve fırtına şartlarında Zel-vash ile Aşmada +2.',
+    oneriYaklasim: 'Zel-vash',
+    yuk: 'Karada Huzursuzum'
+  },
+  'Tüccar / Kervancı': {
+    ad: 'Tüccar / Kervancı',
+    kategori: 'Emek, Deniz ve Ruh',
+    meslekHüneri: 'Gümüşün Gözü',
+    hunerMetni: 'Çünkü her şeyin bir fiyatı var; pazarlık, gümrük memuru bağlama ve yol erzak hesaplarında Aronlid ile +2.',
+    oneriYaklasim: 'Aronlid',
+    yuk: 'Her Şeyin Bir Fiyatı Var'
+  },
+  'Demirci / Madenci': {
+    ad: 'Demirci / Madenci',
+    kategori: 'Emek, Deniz ve Ruh',
+    meslekHüneri: 'Örs ve Damar',
+    hunerMetni: 'Çünkü demiri ve taşı tanırım; silah, zırh onarımı, tahkimat ve yeraltı maden geçitlerinde Lithron ile Aşmada +2.',
+    oneriYaklasim: 'Lithron',
+    yuk: 'Ocağa Bağlıyım'
+  },
+  Şifacı: {
     ad: 'Şifacı',
-    aciklama: 'Bitkilerin dilini bilen, cerrahi ve kan dindirme sanatında usta yaşam koruyucusu.',
-    roller: 'Takım destekçisi, zehir giderici, otacı',
-    hunerler: [
-      { ad: 'Bitki Merhemi', aciklama: 'Dinlenme anında bir Sıyrık yarasını anında iyileştirir.' },
-      { ad: 'Kan Dindir', aciklama: 'Savaş ortasında bir dostunun Yara kutusunu dondurur.' },
-      { ad: 'Ruh Yatıştır', aciklama: 'Korku veya delilik yaşayanların zihnini arındırır.' }
-    ],
-    zaaf: { ad: 'Şiddet Çekincesi', aciklama: 'Can almak ruhunu zedeler; öldürücü darbe vurmakta zorlanır.' },
-    oneriNitelik: 'WIS',
-    oneriBeceri: 'Investigate'
+    kategori: 'Emek, Deniz ve Ruh',
+    meslekHüneri: 'Can Suyunun Elleri',
+    hunerMetni: 'Çünkü yara sararım; bir müttefikin Fiziksel Sonucunu tedavi ederken Loth ile +2.',
+    oneriYaklasim: 'Loth',
+    yuk: 'Hiçbir Yarayı Bırakamam'
   },
-  'Irun Demirci': {
-    ad: 'Irun Demirci',
-    aciklama: 'Kara çeliği döven, zırhların gizemini bilen ve silahları efsunlayan usta zanaatkar.',
-    roller: 'Ekipman güçlendirici, yıkıcı çekiç dövüşçüsü',
-    hunerler: [
-      { ad: 'Dövme Zırh', aciklama: 'Kuşandığı zırhın eşiğine +1 ek zırh puanı ekler.' },
-      { ad: 'Kusursuz Bileme', aciklama: 'Bilediği bir silah gün boyu +1 Vuruş bonusu kazanır.' },
-      { ad: 'Ateş Dayanımı', aciklama: 'Ateş ve ısı hasarlarına karşı 2 kutu direnç sağlar.' }
-    ],
-    zaaf: { ad: 'Ağır Hareket', aciklama: 'Ağır adımları nedeniyle Stealth ve kaçış manevralarında dezavantajlıdır.' },
-    oneriNitelik: 'STR',
-    oneriBeceri: 'Fight'
+  'Rahip / Novis': {
+    ad: 'Rahip / Novis',
+    kategori: 'Emek, Deniz ve Ruh',
+    meslekHüneri: 'Mabed’in Sözü',
+    hunerMetni: 'Çünkü ayin ve yemin bilirim; dinî tören, dua, cenaze ve yemin sahnelerinde Erau ile Avantaj Yaratırken +2.',
+    oneriYaklasim: 'Erau',
+    yuk: 'Mabed’in Gözü Üstümde'
   },
-  'Tosh (Dışlanmış)': {
-    ad: 'Tosh',
-    aciklama: 'Toplumun lağımlarında, çöplüklerinde hayatta kalmayı başarmış dirençli yabani.',
-    roller: 'Zehir uzmanı, kilit açıcı, kaçakçı',
-    hunerler: [
-      { ad: 'Çöpçü Gözü', aciklama: 'Terk edilmiş odalarda gözden kaçan değerli eşyayı bulur.' },
-      { ad: 'Kaçış Sezgisi', aciklama: 'Kıstırıldığında savunma zarına +2 ekler.' },
-      { ad: 'Zehir Direnci', aciklama: 'Bataklık gazlarına ve zehirlere karşı bağışıktır.' },
-    ],
-    zaaf: { ad: 'Dışlanmışlık', aciklama: 'Soylular ve loncalar tarafından hor görülür; diplomasi zarları zordur.' },
-    oneriNitelik: 'CON',
-    oneriBeceri: 'Stealth'
+  Büyücü: {
+    ad: 'Büyücü',
+    kategori: 'Emek, Deniz ve Ruh',
+    meslekHüneri: 'Yasak İlim',
+    hunerMetni: 'Loth ile doğaüstü manipülasyon yapabilirsin; ancak her kullanım Büyü Bedeli (fiziksel/zihinsel hasar ve engizisyon takibi) riskine tabidir.',
+    oneriYaklasim: 'Loth',
+    yuk: 'Gölge Veziri Peşimde',
+    yasakIlimZorunlu: true
   }
 };
 
-export interface Esya {
-  id: string;
+export const MESLEKLER = ON_SEKIZ_MESLEK;
+
+// ==========================================
+// 7. YARA HATLARI (DAMAGE TRACKS & STRESS)
+// ==========================================
+export interface YaraHatKutulari {
+  fiziksel: [boolean, boolean, boolean]; // 3 kutu tampon (1, 1, 1)
+  zihinsel: [boolean, boolean, boolean]; // 3 kutu tampon (1, 1, 1)
+  itibar: [boolean];                     // 1 kutu tampon (1)
+}
+
+export interface Sonuclar {
+  hafif?: string; // -2 (1 sahne)
+  orta?: string;  // -4 (1 oturum)
+  agir?: string;  // -6 (1 hikâye dönümü)
+}
+
+// ==========================================
+// 8. TEOLOJİK HÜNERLER (DENGE KONSEYİ & MABED)
+// ==========================================
+export interface TeolojikHuner {
   ad: string;
-  tur: 'Silah' | 'Zırh' | 'Kalkan' | 'Teçhizat' | 'Tıbbi' | 'Görünüş Nesnesi';
-  fiyat: number; // Aron
-  yuk: number; // Slot
-  zirhPuani?: number;
-  hasarBonus?: number;
-  kalkanSavunma?: number;
+  doktrin: string;
+  yaklasim: YaklasimAdi;
   aciklama: string;
 }
 
-export const HAZIR_ESYALAR: Esya[] = [
-  { id: 'e1', ad: 'Stallhart Çeliği Kılıç', tur: 'Silah', fiyat: 8, yuk: 2, hasarBonus: 2, aciklama: 'Ağır, tek ağızlı imparatorluk süvari kılıcı.' },
-  { id: 'e2', ad: 'Hafif Kısa Yay & Sadak', tur: 'Silah', fiyat: 7, yuk: 2, hasarBonus: 1, aciklama: 'Porsuk ağacından yapılma 20 oklu kolcu yayı.' },
-  { id: 'e3', ad: 'Gizli Çelik Hançer', tur: 'Silah', fiyat: 3, yuk: 1, hasarBonus: 1, aciklama: 'Çizme içine gizlenebilen kavisli hançer.' },
-  { id: 'e4', ad: 'Perçinli Deri Zırh', tur: 'Zırh', fiyat: 6, yuk: 2, zirhPuani: 1, aciklama: 'Esnek, hareket kabiliyetini engellemeyen zırh.' },
-  { id: 'e5', ad: 'Stallhart Levha Göğüslük', tur: 'Zırh', fiyat: 14, yuk: 4, zirhPuani: 2, aciklama: 'Dövme çelik göğüslük. Ağır darbeleri emer.' },
-  { id: 'e6', ad: 'Meşe Ağacı Yuvarlak Kalkan', tur: 'Kalkan', fiyat: 4, yuk: 2, kalkanSavunma: 1, aciklama: 'Demir kuşaklı siper kalkanı. +1 Savunma verir.' },
-  { id: 'e7', ad: 'Şifacı Çantası ve Merhemler', tur: 'Tıbbi', fiyat: 4, yuk: 1, aciklama: '3 kullanım: kan dindirir, acıyı hafifletir.' },
-  { id: 'e8', ad: 'Sefer Heybesi ve Çakmaktaşı', tur: 'Teçhizat', fiyat: 2, yuk: 1, aciklama: '3 günlük kurutulmuş et, tulum, çakmak taşı.' },
-  { id: 'e9', ad: 'Kenevir Halat ve Çengel (15m)', tur: 'Teçhizat', fiyat: 2, yuk: 1, aciklama: 'Tırmanış ve tutsak bağlama için dayanıklı ip.' },
-  { id: 'e10', ad: 'Pirinç Rün Feneri', tur: 'Teçhizat', fiyat: 3, yuk: 1, aciklama: 'Büyülü yağı ile 6 saat sis delen ışık yayar.' },
-  { id: 'e11', ad: 'Zehirli Diken Şişesi', tur: 'Teçhizat', fiyat: 5, yuk: 1, aciklama: 'Silaha sürülünce hedefi sersemletir.' },
-  { id: 'e12', ad: 'Hane Mührü Yüzüğü', tur: 'Görünüş Nesnesi', fiyat: 5, yuk: 0, aciklama: 'Kişisel damga balmumu mührü basar. Saygınlık kazandırır.' }
+export const TEOLOJIK_HUNERLER: TeolojikHuner[] = [
+  {
+    ad: 'Lidros’un Terazisi',
+    doktrin: 'Hukuki Doktrin',
+    yaklasim: 'Aldris',
+    aciklama: 'Bir mahkemede ya da resmî divan ithamında Aldris (Hukuk) zarı atarken tarafsız gerçeği savunuyorsan rakiplerin unvan Aspect’leri çağrılamaz ve Sabit Eşik devreye girmez.'
+  },
+  {
+    ad: 'Maraz’ın Arpı',
+    doktrin: 'Ölüm Sezgisi',
+    yaklasim: 'Erau',
+    aciklama: 'Ölüm döşeğindeki birinin başında Erau kullanarak maktulün son fısıltısını çözer; ölümün doğal mı, zehir kaynaklı mı olduğunu kesin tespit eder.'
+  },
+  {
+    ad: 'Lomera Barışı (Denge Çemberi)',
+    doktrin: 'Çember İlanı',
+    yaklasim: 'Edor / Edros',
+    aciklama: 'İki taraf arasına kireçle çember çizip Lomera Barışı ilan eder. Taraflar toplu savaşı durdurup meseleyi resmî Dello düellosuna bırakmak için Edor / Edros testi vermek zorunda kalır.'
+  }
 ];
+
+// ==========================================
+// 9. BÜYÜ KURALLARI (LOTH & YASAK İLİM)
+// ==========================================
+export interface BuyuBedeliSonuc {
+  sonuc: 'Görkemli Başarı' | 'Başarı' | 'Denk' | 'Başarısız';
+  durum: string;
+  bedel: string;
+}
+
+export const BUYU_BEDELI_TABLOSU: BuyuBedeliSonuc[] = [
+  { sonuc: 'Görkemli Başarı', durum: 'Çalışır ve bir ödül verir (Güçlendirme).', bedel: 'Yok. İz kalmaz.' },
+  { sonuc: 'Başarı', durum: 'Tam çalışır.', bedel: 'Yok. İz kalmaz.' },
+  { sonuc: 'Denk', durum: 'Çalışır.', bedel: 'Sahneye bir Büyü İzi Aspect’i konur (“Mor Alev Kokusu”, “Kırılan Gölgeler”) ya da 1 şift Zihinsel hasar alırsın.' },
+  { sonuc: 'Başarısız', durum: 'Çalışmaz ya da ters teper.', bedel: 'Büyü İzi ve 2 şift Zihinsel hasar (Edor / Edros ile savunulmaz); Anlatıcı sana Av Aspect’i koyabilir (“Gölge Veziri Beni Arıyor”).' }
+];
+
+// ==========================================
+// 10. EKİPMAN ASPECT'LERİ (ITEM ASPECTS & LOAD)
+// ==========================================
+export interface DurumSinerjisi {
+  hedefDurum?: string;          // Hedefe uygulanan durum: 'Kanamalı', 'Zehirlenmiş', 'Alevler İçinde', etc.
+  kullaniciDurum?: string;      // Kuşanıldığında/kullanıldığında kazanılan durum: 'Kutsanmış', 'Odaklanmış', 'Çelik Siper', etc.
+  kaldirilanDurumlar?: string[]; // Temizlenen durumlar: ['Kanamalı', 'Zehirlenmiş', 'Dehşet İçinde'], etc.
+  tetiklenme: 'Vuruşta' | 'Kuşanıldığında' | 'Kullanıldığında' | 'Savunmada';
+  aciklama: string;
+}
+
+export interface EkipmanAspect {
+  id: string;
+  ad: string;
+  tur: 'Silah' | 'Zırh' | 'Kalkan' | 'Teçhizat' | 'Tıbbi' | 'Görünüş Nesnesi' | 'Hazine' | 'Büyülü Yadigar';
+  aspectEtkisi?: string;
+  fiyat: number; // Aron
+  yuk?: number;  // Yük Puanı (0..3)
+  aciklama?: string;
+  hasarBonus?: number;
+  zirhPuani?: number;
+  kalkanSavunma?: number;
+  kusandiMi?: boolean;
+  nadir?: 'Sıradan' | 'Usta İşi' | 'Efsanevi' | 'Yasak Büyülü';
+  durumSinerjisi?: DurumSinerjisi;
+}
+
+export function hesaplaKarakterYuk(envanter: EkipmanAspect[] = []): number {
+  return envanter.reduce((sum, item) => sum + (item.yuk ?? 1), 0);
+}
+
+export function hesaplaMaksimumYuk(karakter?: any): number {
+  const str = karakter?.nitelikler?.STR ?? 2;
+  return Math.max(6, 6 + (str > 2 ? (str - 2) * 2 : (str - 2)));
+}
+
+export const HAZIR_EKIPMANLAR: EkipmanAspect[] = [
+  { id: 'eq_agir_zirh', ad: 'Ağır Plaka Zırh', tur: 'Zırh', aspectEtkisi: 'Sahne boyunca Ghardello ile yapılan Savunmada sahne başına 1 kez bedelsiz çağrılabilir (+2).', fiyat: 25, yuk: 2, zirhPuani: 2, nadir: 'Usta İşi', durumSinerjisi: { kullaniciDurum: 'Çelik Siper', tetiklenme: 'Kuşanıldığında', aciklama: 'Kuşanıldığında "Çelik Siper" sağlar (+2 Savunma).' } },
+  { id: 'eq_balta', ad: 'Çift Elli Balta / Kargı', tur: 'Silah', aspectEtkisi: 'Bir engeli Lithron ile kırarken ya da Ghardello ile Saldırıda sahne başına 1 kez bedelsiz çağrılabilir (+2).', fiyat: 20, yuk: 2, hasarBonus: 2, nadir: 'Usta İşi' },
+  { id: 'eq_hancer', ad: 'Zehirli Hançer', tur: 'Silah', aspectEtkisi: 'Ghardello ile yapılan ilk başarılı vuruşta hedefe bedelsiz ek 1 şift hasar ekler.', fiyat: 15, yuk: 1, hasarBonus: 1, nadir: 'Usta İşi', durumSinerjisi: { hedefDurum: 'Zehirlenmiş', tetiklenme: 'Vuruşta', aciklama: 'Vuruşta hedefe "Zehirlenmiş" durumu uygular (1 Hasar/Tur).' } },
+  { id: 'eq_yay', ad: 'Dişbudak Av Yayı & Sadak', tur: 'Silah', aspectEtkisi: 'Rax-ed ile menzilli atışlarda sahne başına 1 kez bedelsiz çağrılabilir (+2).', fiyat: 18, yuk: 2, hasarBonus: 1, nadir: 'Sıradan', durumSinerjisi: { kullaniciDurum: 'Odaklanmış', tetiklenme: 'Kuşanıldığında', aciklama: 'Kuşanıldığında "Odaklanmış" durumu sağlar (+1 Zar, +1 Sav).' } },
+  { id: 'eq_kalkan', ad: 'Bronz Siper Kalkanı', tur: 'Kalkan', aspectEtkisi: 'Kalkan duvarında veya Ghardello ile savunurken sahne başına 1 kez bedelsiz çağrılabilir (+2).', fiyat: 12, yuk: 2, kalkanSavunma: 1, nadir: 'Sıradan' },
+  { id: 'eq_pelerin', ad: 'Gölge Pelerini (Tshavel)', tur: 'Teçhizat', aspectEtkisi: 'Karanlıkta veya sis altında Lodvez/Zel-vash atarken bedelsiz çağrılabilir (+2).', fiyat: 30, yuk: 1, nadir: 'Usta İşi' },
+  { id: 'eq_sifa', ad: 'Şifacı Sargı Bezi ve Merhemi', tur: 'Tıbbi', aspectEtkisi: 'Fiziksel Hafif Sonucu tedavi ederken Loth atışına +2 verir.', fiyat: 8, yuk: 1, nadir: 'Sıradan', durumSinerjisi: { kaldirilanDurumlar: ['Kanamalı'], tetiklenme: 'Kullanıldığında', aciklama: 'Kullanıldığında hastanın "Kanamalı" durumunu temizler.' } }
+];
+
+export const HAZIR_ESYALAR = HAZIR_EKIPMANLAR;
+export type Esya = EkipmanAspect;
+
+// ==========================================
+// 11. KARAKTER MODELİ (STALLHART CHARACTER SHEET)
+// ==========================================
+export interface KarakterAspectler {
+  unvanVeKader: string; // Kim olduğun ve peşinde olduğun şey
+  zayifKanadi: string;   // Seni hep başına iş açan yön (Yük)
+  sadakatBagi: string;   // Biri ya da bir şey için verilmiş söz
+  serbest1: string;      // Bir yer, yara, alet veya sır
+  serbest2: string;
+}
 
 export interface Karakter {
   id: string;
   ad: string;
+  oyuncu?: string;
+  tur: TurAdi;
+  irk: string;
+  koken: 'Soylu' | 'Halktan';
+  olcek: number; // 1..10 (Soylu: 5, Halktan: 2)
   hane: Hane;
-  koken: 'Halk' | 'Soylu' | 'Kutsal Kan İddiası';
+  eyalet: string;
   meslek: string;
-  rutbe: string;
+  rutbe?: string;
   fotoUrl?: string;
-  cerceve: string;
-  nitelikler: Nitelikler;
-  beceriler: Beceriler;
-  luck: number;
+  cerceve?: string;
+
+  // Yenileme ve Kader Puanı
+  yenileme: number; // Soylu: 3, Halktan: 4
+  kaderPuani: number; // Mevcut Fate Puanı jetonları
+
+  // 14 Yaklaşım Değerleri
+  yaklasimlar: Record<YaklasimAdi, number>;
+
+  // 3 Yara Hattı (Stres Kutuları)
+  yaraHatlari: YaraHatKutulari;
+
+  // Sonuçlar (3 hat için ortak)
+  sonuclar: Sonuclar;
+
+  // 5 Aspect
+  aspectler: KarakterAspectler;
+
+  // Uzmanlıklar
+  uzmanliklar: string[];
+  yasakIlim: boolean; // Loth ile büyü yapma izni
+
+  // Ekipman Aspect'leri
+  ekipmanAspectleri: string[];
+  envanter: EkipmanAspect[];
+
+  // Geçmiş: Karakteri Tanımlayan 3 Cümle
+  gecmis3Cumle: [string, string, string];
+
+  // Ekonomi & Durum
+  ekonomi: {
+    aron: number;
+    borc: number;
+    sicil?: number;
+    un?: number;
+  };
+  kilometreTaslari?: {
+    kucuk: number;
+    orta: number;
+    buyuk: number;
+  };
+  durumlar: string[];
+  yetenekler?: string[]; // Yetenek Ağacı Düğüm ID'leri
+  muhurler?: {
+    kan: number;     // 🩸 Kızıl Kan Mührü (Demir & Kan)
+    golge: number;   // 🗡️ Kuzgun Gölge Mührü (Gölge & Fısıltı)
+    leke: number;    // 🔮 Leke ve Boşluk Mührü (Yasak Rünler)
+    gunes: number;   // ✨ Güneş ve Terazi Mührü (Mabed & Denge)
+  };
+  notlar?: string;
+
+  // Geriye Dönük Uyumluluk (Legacy Getters)
+  sayaclar: {
+    yaraKutulari: number;
+    alınanYaraKutulari: number;
+    yorgunluk: number;
+    muhur: number;
+    leke: number;
+    supheli: number;
+  };
   gorunumler: {
     anaKavram: string;
     dert: string;
@@ -384,47 +802,159 @@ export interface Karakter {
     catisma: string;
     bag: string;
   };
-  ucEvre: {
-    koken: string;
-    yukselenCatisma: string;
-    konukYildiz: string;
+  beceriler: {
+    Fight: number;
+    Shoot: number;
+    Stealth: number;
+    Investigate: number;
+    Lore: number;
+    ProvokeManipulate: number;
   };
-  sayaclar: {
-    yaraKutulari: number; // Maks = 2 + CON
-    alınanYaraKutulari: number; // 0..yaraKutulari
-    yorgunluk: number; // 0..4
-    muhur: number; // Maks = 2 + Luck
-    leke: number; // 0..9 (6+ da bozulma!)
-    supheli: number; // 0..10 (5+ da takip!)
+  nitelikler: {
+    STR: number;
+    DEX: number;
+    CON: number;
+    INT: number;
+    WIS: number;
+    CHA: number;
   };
-  ekonomi: {
-    aron: number;
-    borc: number;
-    sicil: number;
-    un: number;
-  };
-  envanter: Esya[];
-  yaraIzleri: string[];
-  yaralar: {
-    siyrik?: string; // -2
-    yara?: string; // -4
-    agirYara?: string; // -6 (Kalıcı görünüş / yara izi)
-  };
-  durumlar: string[]; // 'Kanama', 'Sersemlemiş', 'Korku'
-  kilometreTaslari: {
-    kucuk: number;
-    orta: number;
-    buyuk: number;
-  };
-  notlar?: string;
 }
+
+// ==========================================
+// 12. NPC / FİGÜRAN SKALASI
+// ==========================================
+export type NpcTuru = 'Sıradan Figüran' | 'Önemli Rakip' | 'Canavar' | 'Vahşi Hayvan' | 'Kadim Varlık' | 'Boss';
+export type NpcKategori = 'İnsansı' | 'Canavar' | 'Vahşi Hayvan' | 'Hortlak / Yaratık' | 'Kadim Boss';
+
+export interface NPC {
+  id: string;
+  ad: string;
+  tur?: NpcTuru; // 'Sıradan Figüran' | 'Önemli Rakip' | 'Canavar' | 'Vahşi Hayvan' | 'Kadim Varlık' | 'Boss'
+  kategori?: NpcKategori;
+  hane: Hane;
+  eyalet: string;
+  rol: string;
+  tehdit: 'Düşük' | 'Orta' | 'Yüksek' | 'Ölümcül';
+  tutum: number; // -3..+3
+  fotoUrl?: string;
+  anaKavram: string;
+  dert: string;
+  sir: string;
+  ipuclari: string[];
+  anlaticiNotlari: string;
+  olcek?: number;
+
+  // Yaklaşım Dağılımı (Önemli Rakip ise)
+  yaklasimlar?: Partial<Record<YaklasimAdi, number>>;
+
+  // Stres
+  stats: {
+    fight: number;
+    savunma: number;
+    yaraKutulari: number;
+    mevcutYara: number;
+  };
+}
+
+// ==========================================
+// 13. ZAR MOTORU (4dF)
+// ==========================================
+export function zarAt4dF(): number[] {
+  // 4 zar, her biri -1, 0, +1
+  const zarlar: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    const r = Math.floor(Math.random() * 3) - 1;
+    zarlar.push(r);
+  }
+  return zarlar;
+}
+
+export interface FateAtisSonucu {
+  zarlar: number[]; // [-1, 0, 1, 1]
+  zarToplami: number; // -4 .. +4
+  yaklasimDegeri: number;
+  bonus: number;
+  toplam: number;
+  zorluk: number;
+  sift: number; // toplam - zorluk
+  derece: string; // Sıfatlar Merdiveni
+  sonucTuru: 'Görkemli Başarı' | 'Başarı' | 'Denk' | 'Başarısız';
+  aciklama: string;
+}
+
+export function fateAtisiHesapla(
+  yaklasimDegeri: number,
+  zorluk: number = ZORLUKLAR.Makul,
+  bonus: number = 0,
+  ozelZarlar?: number[]
+): FateAtisSonucu {
+  const zarlar = ozelZarlar || zarAt4dF();
+  const zarToplami = zarlar.reduce((a, b) => a + b, 0);
+  const toplam = zarToplami + yaklasimDegeri + bonus;
+  const sift = toplam - zorluk;
+
+  let sonucTuru: 'Görkemli Başarı' | 'Başarı' | 'Denk' | 'Başarısız' = 'Başarı';
+  let aciklama = '';
+
+  if (sift >= 3) {
+    sonucTuru = 'Görkemli Başarı';
+    aciklama = 'Tam başarı ve bir ödül! Bir Güçlendirme (Aspect) kazandın ya da fazladan şift aldın.';
+  } else if (sift >= 1) {
+    sonucTuru = 'Başarı';
+    aciklama = 'Tam başarı! Amacına ulaştın.';
+  } else if (sift === 0) {
+    sonucTuru = 'Denk';
+    aciklama = 'Başarırsın ama bir bedel ödersin (zaman, dikkat kaybı ya da zarar).';
+  } else {
+    sonucTuru = 'Başarısız';
+    aciklama = 'Yapamazsın ya da çok ağır bir bedelle yaparsın.';
+  }
+
+  return {
+    zarlar,
+    zarToplami,
+    yaklasimDegeri,
+    bonus,
+    toplam,
+    zorluk,
+    sift,
+    derece: merdivenDerecesiBul(toplam),
+    sonucTuru,
+    aciklama
+  };
+}
+
+// Sabit Eşik Kontrolü
+export function sabitEsikGecerliMi(saldiranOlcek: number, hedefOlcek: number): {
+  engellendi: boolean;
+  olcekFarki: number;
+  mesaj: string;
+} {
+  const fark = hedefOlcek - saldiranOlcek;
+  if (fark >= 3) {
+    return {
+      engellendi: true,
+      olcekFarki: fark,
+      mesaj: `Sabit Eşik işler (Ölçek farkı: ${fark})! Alt basamaktaki doğrudan saldıramaz. Önce Ver-ed ya da Lodvez ile bir gedik (Avantaj) açmalıdır.`
+    };
+  }
+  return {
+    engellendi: false,
+    olcekFarki: fark,
+    mesaj: 'Statü farkı saldırıyı engellemiyor.'
+  };
+}
+
+// Legacy Aliases
+export type Nitelikler = { STR: number; DEX: number; CON: number; INT: number; WIS: number; CHA: number };
+export type Beceriler = { Fight: number; Shoot: number; Stealth: number; Investigate: number; Lore: number; ProvokeManipulate: number };
 
 export interface ZarSonucu {
   id: string;
   zaman: string;
   atan: string;
-  tur: '4dF' | 'Cephe';
-  zarlar: number[]; // [-1, 0, 1, ...]
+  tur: string;
+  zarlar: number[];
   zarToplami: number;
   nitelikAdi?: string;
   nitelikDegeri: number;
@@ -437,167 +967,38 @@ export interface ZarSonucu {
   muhurKullanildi?: boolean;
 }
 
-export interface NPC {
-  id: string;
-  ad: string;
-  hane: Hane;
-  eyalet: string;
-  rol: 'Vezir' | 'Vali' | 'Paralı Asker' | 'Casus' | 'Büyücü' | 'Tüccar' | 'Haydut Başı' | 'Mabed Yargıcı';
-  tehdit: 'Düşük' | 'Orta' | 'Yüksek' | 'Ölümcül';
-  tutum: number; // -3 (Düşman) ... 0 (Nötr) ... +3 (Müttefik)
-  fotoUrl?: string;
-  anaKavram: string;
-  dert: string;
-  sir: string;
-  ipuclari: string[];
-  anlaticiNotlari: string;
-  stats: {
-    fight: number;
-    savunma: number;
-    yaraKutulari: number;
-    mevcutYara: number;
-  };
-}
-
-export interface DengeKonseyiTanri {
-  ad: string;
-  unvan: string;
-  alan: string;
-  sembol: string;
-  ogreti: string;
-}
-
-export const DENGE_KONSEYI: DengeKonseyiTanri[] = [
-  { ad: 'Malthor', unvan: 'Demir Terazi', alan: 'Adalet, Sözleşmeler, Ölçü', sembol: 'Çift Başlı Terazi', ogreti: 'Söz verilen kanla ödenir.' },
-  { ad: 'Era Zeana', unvan: 'Sessiz Örtü', alan: 'Ölüm, Huzur, Kemik Uykusu', sembol: 'Beyaz Kumaş Üzeri Kar', ogreti: 'Her ateş söner, her kan soğur.' },
-  { ad: 'Gema Hanar', unvan: 'Kül Doğuran', alan: 'Diriliş, Savaş, Ocak Ateşi', sembol: 'Kor Yutan Anka', ogreti: 'Yalnız yananlar küllerinden çıkar.' },
-  { ad: 'Solvena', unvan: 'Derin Akıntı', alan: 'Büyü, Dokuma, Sırlar', sembol: 'Sarmal Göz', ogreti: 'Dokumayı çeken parmak yanmayı göze almalıdır.' }
-];
-
-export const ZORLUK_MERDIVENI: { deger: number; baslik: string; renk: string }[] = [
-  { deger: 8, baslik: 'Aşkın (Beyond)', renk: 'text-amber-300' },
-  { deger: 7, baslik: 'Destansı (Epic)', renk: 'text-amber-400' },
-  { deger: 6, baslik: 'Efsanevi (Legendary)', renk: 'text-yellow-400' },
-  { deger: 5, baslik: 'Muazzam (Superb)', renk: 'text-emerald-400' },
-  { deger: 4, baslik: 'Üstün (Great)', renk: 'text-teal-400' },
-  { deger: 3, baslik: 'Zor / Harika (Good)', renk: 'text-cyan-400' },
-  { deger: 2, baslik: 'İyi (Fair)', renk: 'text-blue-400' },
-  { deger: 1, baslik: 'Sıradan (Average)', renk: 'text-indigo-300' },
-  { deger: 0, baslik: 'Vasat (Mediocre)', renk: 'text-stone-400' },
-  { deger: -1, baslik: 'Zayıf (Poor)', renk: 'text-orange-400' },
-  { deger: -2, baslik: 'Korkunç (Terrible)', renk: 'text-red-500' }
-];
-
-export function merdivenDerecesiBul(toplam: number): string {
-  const match = ZORLUK_MERDIVENI.find(m => m.deger === toplam);
-  if (match) return `${match.baslik} (${toplam >= 0 ? '+' : ''}${toplam})`;
-  if (toplam > 8) return `İlahi (+${toplam})`;
-  return `Felaket (${toplam})`;
-}
-
-// 4dF Zar Motoru
-export function zarAt4dF(): number[] {
-  // 4 zar, her biri -1, 0, +1
-  const zarlar: number[] = [];
-  for (let i = 0; i < 4; i++) {
-    const r = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
-    zarlar.push(r);
-  }
-  return zarlar;
-}
-
-// Cephe Zarı (Birlik savaşları: Rion / Garion)
-export function cepheZariAt(): { sonuc: string; netice: number; aciklama: string } {
-  const rion = Math.floor(Math.random() * 6) + 1;
-  const garion = Math.floor(Math.random() * 6) + 1;
-  const fark = rion - garion;
-
-  let aciklama = '';
-  if (fark >= 3) aciklama = 'Büyük Yarmaca! Düşman hatları paramparça oldu.';
-  else if (fark > 0) aciklama = 'Mevzi Kazanımı! Hat ileri sürüldü.';
-  else if (fark === 0) aciklama = 'Kilitlenme! Kanlı bir siper çıkmazı.';
-  else if (fark > -3) aciklama = 'Geri Çekilme! Düşman kanatları zorluyor.';
-  else aciklama = 'Bozgun Tehlikesi! Sancak düştü, saflar dağılıyor!';
-
-  return {
-    sonuc: `Rion (${rion}) vs Garion (${garion})`,
-    netice: fark,
-    aciklama
-  };
-}
-
-// Türetilen Değer Hesaplayıcıları
-export function hesaplaMaksYaraKutusu(con: number): number {
-  return 2 + con;
-}
-
-export function hesaplaMaksYuk(str: number): number {
-  return 5 + str;
-}
-
-export function hesaplaBaslangicMuhur(luck: number): number {
-  return 2 + luck;
-}
-
-export function hesaplaSavunma(dex: number, envanter: Esya[]): number {
-  const kalkanVar = envanter.some(e => e.tur === 'Kalkan');
-  return dex + (kalkanVar ? 1 : 0);
-}
-
-export function hesaplaToplamAgirlik(envanter: Esya[]): number {
-  return envanter.reduce((acc, curr) => acc + (curr.yuk || 0), 0);
-}
-
-export function hesaplaToplamZirh(envanter: Esya[]): number {
-  return envanter.reduce((acc, curr) => acc + (curr.zirhPuani || 0), 0);
-}
-
-// Saldırı ve Vuruş Mantığı
 export function saldiriHesapla(
   saldiriToplami: number,
   savunmaToplami: number,
-  hedefZirh: number
-): {
-  vurusFarki: number;
-  netHasar: number;
-  onerilenYaraKademesi: 'Yok' | 'Sıyrık' | 'Yara' | 'Ağır Yara' | 'Ölümcül Darbe';
-  aciklama: string;
-} {
+  hedefZirh: number = 0
+) {
   const fark = saldiriToplami - savunmaToplami;
-  if (fark <= 0) {
-    return {
-      vurusFarki: fark,
-      netHasar: 0,
-      onerilenYaraKademesi: 'Yok',
-      aciklama: 'Iskalandı veya siper tarafından savuşturuldu.'
-    };
-  }
-
   const netHasar = Math.max(0, fark - hedefZirh);
-
-  let kademe: 'Yok' | 'Sıyrık' | 'Yara' | 'Ağır Yara' | 'Ölümcül Darbe' = 'Yok';
-  let aciklama = '';
-
-  if (netHasar === 0) {
-    aciklama = `Darbe isabet etti fakat ${hedefZirh} zırh eşiği tüm hasarı emdi.`;
-  } else if (netHasar <= 2) {
-    kademe = 'Sıyrık';
-    aciklama = 'Yüzeysel kanama veya kas ezilmesi (Sıyrık -2).';
-  } else if (netHasar <= 4) {
-    kademe = 'Yara';
-    aciklama = 'Derin kesik, kemik çatlağı veya ciddi travma (Yara -4).';
-  } else if (netHasar <= 6) {
-    kademe = 'Ağır Yara';
-    aciklama = 'Kalıcı iz bırakan, uzuv sakatlayan korkunç darbe (Ağır Yara -6, Yara İzi bırakır).';
-  } else {
-    kademe = 'Ölümcül Darbe';
-    aciklama = 'Vücut bütünlüğünü tehdit eden ölümcül vuruş! Karakter bilinç kaybedebilir.';
-  }
+  let onerilenYaraKademesi: 'Yok' | 'Sıyrık' | 'Yara' | 'Ağır Yara' | 'Ölümcül Darbe' = 'Yok';
+  if (netHasar >= 6) onerilenYaraKademesi = 'Ölümcül Darbe';
+  else if (netHasar >= 4) onerilenYaraKademesi = 'Ağır Yara';
+  else if (netHasar >= 2) onerilenYaraKademesi = 'Yara';
+  else if (netHasar >= 1) onerilenYaraKademesi = 'Sıyrık';
 
   return {
     vurusFarki: fark,
     netHasar,
-    onerilenYaraKademesi: kademe,
-    aciklama
+    onerilenYaraKademesi,
+    aciklama: `Net Hasar: ${netHasar} (${onerilenYaraKademesi})`
   };
 }
+
+export const ZORLUK_MERDIVENI = SIFATLAR_MERDIVENI;
+export function hesaplaMaksYaraKutusu(con: number = 2) { return 3; }
+export function hesaplaMaksYuk(str: number = 2) { return 6; }
+export function hesaplaBaslangicMuhur(luck: number = 3) { return 4; }
+export function hesaplaSavunma(dex: number = 2, envanter: any[] = []) { return dex; }
+export function hesaplaToplamAgirlik(envanter: any[] = []) { return envanter.reduce((a, b) => a + (b.yuk || 1), 0); }
+export function hesaplaToplamZirh(envanter: any[] = []) { return envanter.length > 0 ? 1 : 0; }
+export function cepheZariAt() {
+  const rion = Math.floor(Math.random() * 6) + 1;
+  const garion = Math.floor(Math.random() * 6) + 1;
+  return { sonuc: `Rion (${rion}) vs Garion (${garion})`, netice: rion - garion, aciklama: 'Cephe hattı zarı atıldı.' };
+}
+
+export * from './rules/statusEffects';

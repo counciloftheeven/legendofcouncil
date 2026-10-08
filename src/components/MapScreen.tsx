@@ -18,10 +18,27 @@ import {
 
 interface MapScreenProps {
   rol: 'Anlatıcı' | 'Oyuncu';
+  eyaletler?: EyaletInfo[];
+  onEyaletGuncelle?: (yeni: EyaletInfo[]) => void;
 }
 
-export const MapScreen: React.FC<MapScreenProps> = ({ rol }) => {
-  const [eyaletler, setEyaletler] = useState<EyaletInfo[]>(EYALETLER);
+export const MapScreen: React.FC<MapScreenProps> = ({
+  rol,
+  eyaletler: propEyaletler,
+  onEyaletGuncelle,
+}) => {
+  const [internalEyaletler, setInternalEyaletler] = useState<EyaletInfo[]>(EYALETLER);
+  const eyaletler = propEyaletler || internalEyaletler;
+  const setEyaletler = (yeni: EyaletInfo[] | ((prev: EyaletInfo[]) => EyaletInfo[])) => {
+    if (typeof yeni === 'function') {
+      const guncel = yeni(eyaletler);
+      if (onEyaletGuncelle) onEyaletGuncelle(guncel);
+      else setInternalEyaletler(guncel);
+    } else {
+      if (onEyaletGuncelle) onEyaletGuncelle(yeni);
+      else setInternalEyaletler(yeni);
+    }
+  };
   const [seciliEyaletId, setSeciliEyaletId] = useState<string>(eyaletler[0].id);
   const [grupKonumId, setGrupKonumId] = useState<string>(eyaletler[0].id);
   const [mevsim, setMevsim] = useState<'Kış' | 'İlkbahar' | 'Yaz' | 'Sonbahar'>('Kış');

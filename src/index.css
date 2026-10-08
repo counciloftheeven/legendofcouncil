@@ -13,6 +13,15 @@
     background-color: #0c0d12;
     color: #e5dec9;
     overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  body.theme-parchment {
+    background-color: #ede2cd;
+    background-image: radial-gradient(#decbb1 1px, transparent 1px), radial-gradient(#d5bf9f 1px, #ede2cd 1px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+    color: #231911;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -25,6 +34,14 @@
   background: radial-gradient(circle at 50% 0%, #201a15 0%, #151210 100%);
   border: 1px solid #4a3828;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), inset 0 0 40px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s ease;
+}
+
+.theme-parchment .parchment-card {
+  background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f7f1e4 100%);
+  border: 1px solid #9e7d53;
+  color: #241a12;
+  box-shadow: 0 8px 25px -4px rgba(70, 45, 20, 0.15), inset 0 0 30px rgba(180, 140, 90, 0.1);
 }
 
 .parchment-sheet {
@@ -34,6 +51,52 @@
   background-position: 0 0, 10px 10px;
   border: 1px solid #5a4530;
   box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8), 0 20px 50px rgba(0, 0, 0, 0.9);
+  transition: all 0.25s ease;
+}
+
+.theme-parchment .parchment-sheet {
+  background-color: #faf5ea;
+  background-image: radial-gradient(#f0e4cf 1px, transparent 1px), radial-gradient(#e8dac0 1px, #faf5ea 1px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  border: 1px solid #99744c;
+  color: #241a12;
+  box-shadow: inset 0 0 60px rgba(160, 120, 70, 0.12), 0 12px 35px rgba(60, 40, 15, 0.14);
+}
+
+/* Parchment mode text and input adaptations */
+.theme-parchment input,
+.theme-parchment select,
+.theme-parchment textarea {
+  color: #1c140d !important;
+  background-color: #f4ecdc !important;
+  border-color: #99754f !important;
+}
+
+.theme-parchment ::placeholder {
+  color: #8b735c !important;
+}
+
+.theme-parchment .text-\[\#e5dec9\],
+.theme-parchment .text-\[\#f2ebd9\],
+.theme-parchment .text-\[\#ded1be\],
+.theme-parchment .text-\[\#f5ecd8\],
+.theme-parchment .text-\[\#f3ece0\] {
+  color: #241a12 !important;
+}
+
+.theme-parchment .text-\[\#a99c8b\],
+.theme-parchment .text-\[\#9a8976\],
+.theme-parchment .text-\[\#857564\] {
+  color: #5d4632 !important;
+}
+
+.theme-parchment .bg-\[\#140f0c\],
+.theme-parchment .bg-\[\#16110d\],
+.theme-parchment .bg-\[\#18120e\],
+.theme-parchment .bg-\[\#120d09\] {
+  background-color: #f2e9d7 !important;
+  border-color: #9f7d54 !important;
 }
 
 .gold-border {
@@ -77,6 +140,63 @@
 .leke-corrupted {
   animation: corruption-pulse 3s infinite ease-in-out;
   border-color: #9333ea !important;
+}
+
+/* Screen Shake Effect */
+@keyframes shake-violent {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-2px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(3px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.screen-shake {
+  animation: shake-violent 0.4s ease-in-out;
+}
+
+/* Blood Vignette Overlay */
+.blood-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: inset 0 0 100px 30px rgba(185, 28, 28, 0.65);
+  animation: pulse 1.2s infinite;
+}
+
+/* Loth Purple Arcane Flare */
+.loth-flare {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: inset 0 0 120px 40px rgba(147, 51, 234, 0.55);
+  animation: pulse 1s infinite;
+}
+
+/* Print Grimoire Mode */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  header, nav, button, .no-print, .blood-vignette, .loth-flare {
+    display: none !important;
+  }
+  .parchment-sheet, .parchment-card {
+    background: #ffffff !important;
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
 }
 
 /* Custom Scrollbar for parchment style */

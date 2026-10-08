@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { NPC, Hane, HANELER } from '../rules';
 import { INITIAL_NPCS } from '../data/initialData';
+import { rastgeleDusmanUret } from '../data/monstersAndBeasts';
 import { sound } from '../utils/audio';
+import confetti from 'canvas-confetti';
 import {
   Users,
   Search,
@@ -12,7 +14,11 @@ import {
   Swords,
   Plus,
   Lock,
-  Sparkles
+  Sparkles,
+  MessageSquare,
+  Flame,
+  ShieldAlert,
+  Dices
 } from 'lucide-react';
 
 interface NpcScreenProps {
@@ -20,6 +26,7 @@ interface NpcScreenProps {
   onNpcGuncelle: (yeniListe: NPC[]) => void;
   rol: 'Anlatıcı' | 'Oyuncu';
   onSahneyeCagir: (npc: NPC) => void;
+  onDiyalogBasla?: (npc: NPC) => void;
 }
 
 export const NpcScreen: React.FC<NpcScreenProps> = ({
@@ -27,9 +34,11 @@ export const NpcScreen: React.FC<NpcScreenProps> = ({
   onNpcGuncelle,
   rol,
   onSahneyeCagir,
+  onDiyalogBasla,
 }) => {
   const [aramaMetni, setAramaMetni] = useState('');
   const [seciliRol, setSeciliRol] = useState<string>('Hepsi');
+  const [seciliKategori, setSeciliKategori] = useState<string>('Hepsi');
   const [seciliHane, setSeciliHane] = useState<string>('Hepsi');
   const [seciliNpcId, setSeciliNpcId] = useState<string>(npcler[0]?.id || '');
 
@@ -42,15 +51,47 @@ export const NpcScreen: React.FC<NpcScreenProps> = ({
   const [yeniKonsept, setYeniKonsept] = useState('');
   const [yeniSir, setYeniSir] = useState('');
 
+  // Rastgele Düşman / Canavar / Hayvan Üret
+  const handleRastgeleUret = (tur: 'Vahşi Hayvan' | 'Canavar' | 'Rastgele NPC') => {
+    sound.playBladeClash();
+    confetti({ particleCount: 35, spread: 60 });
+    const yeni = rastgeleDusmanUret(tur);
+    onNpcGuncelle([yeni, ...npcler]);
+    setSeciliNpcId(yeni.id);
+  };
+
   // Filtreleme
   const filtrelenmis = npcler.filter((npc) => {
-    const adUyumu = npc.ad.toLowerCase().includes(aramaMetni.toLowerCase());
-    const rolUyumu = seciliRol === 'Hepsi' || npc.rol === seciliRol;
+    const q = aramaMetni.toLowerCase();
+    const adUyumu =
+      !q ||
+      npc.ad.toLowerCase().includes(q) ||
+      (npc.anaKavram && npc.anaKavram.toLowerCase().includes(q)) ||
+      (npc.rol && npc.rol.toLowerCase().includes(q)) ||
+      (npc.eyalet && npc.eyalet.toLowerCase().includes(q));
+
+    let rolUyumu = true;
+    if (seciliRol !== 'Hepsi') {
+      const r = seciliRol.toLowerCase();
+      rolUyumu = npc.rol ? npc.rol.toLowerCase().includes(r) : false;
+    }
+
+    let kategoriUyumu = true;
+    if (seciliKategori === 'Canavar') {
+      kategoriUyumu = npc.tur === 'Canavar' || npc.kategori === 'Canavar' || npc.kategori === 'Hortlak / Yaratık' || npc.kategori === 'Kadim Boss' || npc.rol?.toLowerCase().includes('canavar') || npc.rol?.toLowerCase().includes('gulyabani');
+    } else if (seciliKategori === 'Vahşi Hayvan') {
+      kategoriUyumu = npc.tur === 'Vahşi Hayvan' || npc.kategori === 'Vahşi Hayvan' || npc.rol?.toLowerCase().includes('kurt') || npc.rol?.toLowerCase().includes('ayı') || npc.rol?.toLowerCase().includes('hayvan') || npc.rol?.toLowerCase().includes('yırtıcı');
+    } else if (seciliKategori === 'Düşman') {
+      kategoriUyumu = npc.tutum <= -2 || npc.rol?.toLowerCase().includes('suikast') || npc.rol?.toLowerCase().includes('haydut') || npc.rol?.toLowerCase().includes('engizit');
+    } else if (seciliKategori === 'Soylu') {
+      kategoriUyumu = npc.rol?.toLowerCase().includes('vezir') || npc.rol?.toLowerCase().includes('vali') || npc.rol?.toLowerCase().includes('lord') || npc.rol?.toLowerCase().includes('kral');
+    }
+
     const haneUyumu = seciliHane === 'Hepsi' || npc.hane === seciliHane;
-    return adUyumu && rolUyumu && haneUyumu;
+    return adUyumu && rolUyumu && kategoriUyumu && haneUyumu;
   });
 
-  const aktifNpc = npcler.find((n) => n.id === seciliNpcId) || npcler[0];
+  const aktifNpc = npcler.find((n) => n.id === seciliNpcId) || filtrelenmis[0] || npcler[0];
 
   // Tutum Sayacı (-3 .. +3)
   const handleTutumDegistir = (npcId: string, delta: number) => {
@@ -93,10 +134,10 @@ export const NpcScreen: React.FC<NpcScreenProps> = ({
         <div>
           <h1 className="font-heading font-black text-xl text-amber-200 flex items-center gap-2">
             <Users className="w-5 h-5 text-amber-400" />
-            <span>Stallhart Şahsiyetleri &amp; NPC Arşivi</span>
+            <span>Stallhart Şahsiyetleri, Canavarlar &amp; NPC Arşivi</span>
           </h1>
           <p className="text-xs text-[#a99c8b]">
-            Kurultay vezirleri, eyalet valileri, lonca reisleri ve yeraltı casusları.
+            Toplam <span className="font-mono text-amber-300 font-bold">{npcler.length}</span> kayıt: Kadim canavarlar, vahşi hayvanlar, eyalet vezirleri, suikastçılar ve haramiler.
           </p>
         </div>
 
@@ -106,10 +147,10 @@ export const NpcScreen: React.FC<NpcScreenProps> = ({
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#7f6f5e]" />
             <input
               type="text"
-              placeholder="İsim ara..."
+              placeholder="İsim, yaratık veya rol ara..."
               value={aramaMetni}
               onChange={(e) => setAramaMetni(e.target.value)}
-              className="bg-[#17120e] border border-[#443322] rounded pl-8 pr-3 py-1.5 text-xs text-[#f1e6d4] focus:outline-none"
+              className="bg-[#17120e] border border-[#443322] rounded pl-8 pr-3 py-1.5 text-xs text-[#f1e6d4] focus:outline-none w-48 sm:w-56"
             />
           </div>
 
@@ -119,26 +160,82 @@ export const NpcScreen: React.FC<NpcScreenProps> = ({
             onChange={(e) => setSeciliRol(e.target.value)}
             className="bg-[#17120e] border border-[#443322] rounded px-2.5 py-1.5 text-xs text-[#eedec8]"
           >
-            <option value="Hepsi">Tüm Roller</option>
-            <option value="Vezir">Vezir</option>
-            <option value="Vali">Vali</option>
-            <option value="Paralı Asker">Paralı Asker</option>
-            <option value="Casus">Casus</option>
-            <option value="Mabed Yargıcı">Mabed Yargıcı</option>
-            <option value="Büyücü">Büyücü</option>
-            <option value="Tüccar">Tüccar</option>
+            <option value="Hepsi">Tüm Roller ({npcler.length})</option>
+            <option value="Canavar">Canavar &amp; Yaratık</option>
+            <option value="Vahşi">Vahşi Yırtıcı &amp; Hayvan</option>
+            <option value="Suikast">Suikastçı &amp; Gölge</option>
+            <option value="Paralı">Paralı Asker</option>
+            <option value="Muhafız">Resmi Asker &amp; Muhafız</option>
+            <option value="Kâtip">Memur &amp; Kâtip</option>
+            <option value="Haydut">Haydut &amp; Korsan</option>
+            <option value="Vezir">Vezir &amp; Danışman</option>
+            <option value="Vali">Vali &amp; Hükümdar</option>
+            <option value="Casus">Casus &amp; Ajan</option>
+            <option value="Tüccar">Tüccar &amp; Banker</option>
           </select>
 
           {rol === 'Anlatıcı' && (
-            <button
-              onClick={() => setYeniNpcModal(true)}
-              className="px-3 py-1.5 rounded bg-[#3b2a1a] hover:bg-[#523b24] text-amber-200 text-xs font-bold border border-[#785734] flex items-center gap-1 shadow"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Yeni NPC</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleRastgeleUret('Canavar')}
+                className="px-2.5 py-1.5 rounded bg-purple-950/80 hover:bg-purple-900 text-purple-200 text-xs font-bold border border-purple-700 flex items-center gap-1 shadow"
+                title="Rastgele yeni bir Canavar üret ve arşive ekle"
+              >
+                <Skull className="w-3.5 h-3.5 text-purple-400" />
+                <span>+ Canavar</span>
+              </button>
+              <button
+                onClick={() => handleRastgeleUret('Vahşi Hayvan')}
+                className="px-2.5 py-1.5 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 text-xs font-bold border border-emerald-700 flex items-center gap-1 shadow"
+                title="Rastgele yeni bir Vahşi Hayvan üret ve arşive ekle"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                <span>+ Hayvan</span>
+              </button>
+              <button
+                onClick={() => handleRastgeleUret('Rastgele NPC')}
+                className="px-2.5 py-1.5 rounded bg-red-950/80 hover:bg-red-900 text-red-200 text-xs font-bold border border-red-700 flex items-center gap-1 shadow"
+                title="Rastgele tehlikeli bir Düşman / Haydut üret"
+              >
+                <Swords className="w-3.5 h-3.5 text-red-400" />
+                <span>+ Düşman</span>
+              </button>
+              <button
+                onClick={() => setYeniNpcModal(true)}
+                className="px-3 py-1.5 rounded bg-[#3b2a1a] hover:bg-[#523b24] text-amber-200 text-xs font-bold border border-[#785734] flex items-center gap-1 shadow"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Özel NPC</span>
+              </button>
+            </div>
           )}
         </div>
+      </div>
+
+      {/* Hızlı Kategori Filtre Butonları */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
+        {[
+          { id: 'Hepsi', label: 'Tüm Varlıklar', count: npcler.length },
+          { id: 'Canavar', label: '👹 Canavarlar & Kadim Yaratıklar', count: npcler.filter(n => n.tur === 'Canavar' || n.kategori === 'Canavar' || n.kategori === 'Hortlak / Yaratık' || n.kategori === 'Kadim Boss').length },
+          { id: 'Vahşi Hayvan', label: '🐺 Vahşi Hayvanlar', count: npcler.filter(n => n.tur === 'Vahşi Hayvan' || n.kategori === 'Vahşi Hayvan').length },
+          { id: 'Düşman', label: '⚔️ Tehlikeli Düşmanlar & Haydutlar', count: npcler.filter(n => n.tutum <= -2).length },
+          { id: 'Soylu', label: '👑 Soylular & Vezirler', count: npcler.filter(n => n.rol?.toLowerCase().includes('vezir') || n.rol?.toLowerCase().includes('vali') || n.rol?.toLowerCase().includes('lord')).length },
+        ].map((kat) => (
+          <button
+            key={kat.id}
+            onClick={() => setSeciliKategori(kat.id)}
+            className={`px-3 py-1.5 rounded-lg border whitespace-nowrap transition-all font-heading font-bold flex items-center gap-1.5 shadow-sm ${
+              seciliKategori === kat.id
+                ? 'bg-amber-900/80 text-amber-200 border-amber-400 ring-1 ring-amber-400'
+                : 'bg-[#18130e] text-stone-400 hover:text-amber-200 border-[#3d2a1a]'
+            }`}
+          >
+            <span>{kat.label}</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-black/60 font-mono text-amber-300">
+              {kat.count}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* 2 Sütun: Sol Kart Listesi (5 cols) | Sağ Detay Kartı (7 cols) */}
@@ -148,6 +245,8 @@ export const NpcScreen: React.FC<NpcScreenProps> = ({
           {filtrelenmis.map((npc) => {
             const isSelected = npc.id === seciliNpcId;
             const haneInfo = HANELER[npc.hane];
+            const isMonster = npc.tur === 'Canavar' || npc.kategori === 'Canavar' || npc.kategori === 'Hortlak / Yaratık';
+            const isBeast = npc.tur === 'Vahşi Hayvan' || npc.kategori === 'Vahşi Hayvan';
             return (
               <div
                 key={npc.id}
@@ -158,22 +257,36 @@ export const NpcScreen: React.FC<NpcScreenProps> = ({
                 className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${
                   isSelected
                     ? 'bg-[#271e16] border-amber-400 shadow-md ring-1 ring-amber-400'
+                    : isMonster
+                    ? 'bg-[#1b121c] border-purple-950 hover:border-purple-800'
+                    : isBeast
+                    ? 'bg-[#121c16] border-emerald-950 hover:border-emerald-800'
                     : 'bg-[#18130e] border-[#3e2e20] hover:border-[#674e35]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs shadow"
+                    className="w-9 h-9 rounded-full border flex items-center justify-center font-bold text-xs shadow overflow-hidden flex-shrink-0"
                     style={{
-                      backgroundColor: haneInfo?.renk || '#443322',
+                      backgroundColor: haneInfo?.renk || (isMonster ? '#3b1238' : isBeast ? '#0f291e' : '#443322'),
                       color: haneInfo?.ikincilRenk || '#ffffff',
                     }}
                   >
-                    {npc.hane[0]}
+                    {isMonster ? '👹' : isBeast ? '🐺' : npc.hane[0]}
                   </div>
                   <div>
-                    <div className="font-heading font-bold text-xs text-[#f1e6d4]">
-                      {npc.ad}
+                    <div className="font-heading font-bold text-xs text-[#f1e6d4] flex items-center gap-1.5">
+                      <span>{npc.ad}</span>
+                      {isMonster && (
+                        <span className="text-[9px] px-1 rounded bg-purple-950 text-purple-300 border border-purple-800">
+                          Canavar
+                        </span>
+                      )}
+                      {isBeast && (
+                        <span className="text-[9px] px-1 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                          Vahşi
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] text-[#93826e]">
                       {npc.rol} • {npc.hane}
@@ -222,13 +335,25 @@ export const NpcScreen: React.FC<NpcScreenProps> = ({
                   </span>
                 </div>
 
-                <button
-                  onClick={() => onSahneyeCagir(aktifNpc)}
-                  className="px-3 py-1.5 rounded wax-seal text-white text-xs font-heading font-bold shadow flex items-center gap-1.5"
-                >
-                  <Swords className="w-3.5 h-3.5" />
-                  <span>Sahneye Çağır</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {onDiyalogBasla && (
+                    <button
+                      onClick={() => onDiyalogBasla(aktifNpc)}
+                      className="px-3 py-1.5 rounded bg-[#2a1d14] hover:bg-[#3d2a1b] text-amber-200 text-xs font-heading font-bold border border-[#523d2b] shadow flex items-center gap-1.5"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Diyalog Başlat</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => onSahneyeCagir(aktifNpc)}
+                    className="px-3 py-1.5 rounded wax-seal text-white text-xs font-heading font-bold shadow flex items-center gap-1.5"
+                  >
+                    <Swords className="w-3.5 h-3.5" />
+                    <span>Savaşa Çağır</span>
+                  </button>
+                </div>
               </div>
 
               {/* Tutum Sayacı (-3 .. +3) */}
